@@ -184,7 +184,7 @@ void Draw::drawGridSprite(const GridSprite &sprite, int frameIndex, int dx, int 
     HDC srcDC = flipX ? bc.flippedMemDC : bc.memDC;
 
     BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-    AlphaBlend(backDC_, dx, dy, sw, sh, srcDC, sx, sy, sw, sh, bf);
+    AlphaBlend(backDC_, dx + sprite.xOffset, dy + sprite.yOffset, sw, sh, srcDC, sx, sy, sw, sh, bf);
 }
 
 // 简单文字绘制

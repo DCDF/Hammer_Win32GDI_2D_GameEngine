@@ -1,1 +1,5 @@
 101 RCDATA "bg.png"
+
+201 RCDATA "zombie1.png"
+
+301 RCDATA "bgm.ogg"

@@ -12,6 +12,7 @@ set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # 自动收集源码
 file(GLOB_RECURSE ALL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+    "src/*.c"
     "src/*.cpp"
     "src/*.rc"
     "rc/*.rc"

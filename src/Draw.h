@@ -37,6 +37,8 @@ public:
         int frameHeight;
         int cols;
         int rows;
+        int xOffset;
+        int yOffset;
     };
     void drawGridSprite(const GridSprite &sprite, int frameIndex, int dx, int dy, bool flipX = false);
 
