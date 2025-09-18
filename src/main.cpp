@@ -52,6 +52,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
         GDI::image(101, 0, 0, 640, 160);
         GDI::imageEx(201, 32, 96, 64, 64, true, 0, 0, 64, 64);
+        GDI::imageEx(201, 96, 96, 64, 64, false, 0, 0, 64, 64);
         // GDI::imageEx(101, 140, 96, 64, 64, false, 576, 96, 64, 64);
 
         GDI::flush(dt);

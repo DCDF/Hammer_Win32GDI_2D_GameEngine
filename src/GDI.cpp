@@ -258,7 +258,7 @@ static void DrawImageFast(uint32_t *destPixels, int destWidth, int destHeight, i
     }
 }
 
-// 修复DrawImageWithCrop函数
+// 修复DrawImageWithCrop函数中的镜像处理
 static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeight, int destStride,
                               const uint32_t *srcPixels, int srcWidth, int srcHeight,
                               int destX, int destY, int destW, int destH,
@@ -291,7 +291,7 @@ static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeigh
     {
         // 计算源图像Y坐标
         int srcYPos = srcY + static_cast<int>((y - destY) / scaleY);
-        if (srcYPos < 0 || srcYPos >= srcHeight)
+        if (srcYPos < srcY || srcYPos >= srcY + srcH)
             continue;
 
         uint32_t *destRow = destPixels + y * (destStride / 4) + startX;
@@ -302,6 +302,7 @@ static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeigh
             int srcXPos;
             if (flip)
             {
+                // 修复：正确计算镜像坐标
                 srcXPos = srcX + srcW - 1 - static_cast<int>((x - destX) / scaleX);
             }
             else
@@ -309,7 +310,8 @@ static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeigh
                 srcXPos = srcX + static_cast<int>((x - destX) / scaleX);
             }
 
-            if (srcXPos >= 0 && srcXPos < srcWidth && srcYPos >= 0 && srcYPos < srcHeight)
+            if (srcXPos >= srcX && srcXPos < srcX + srcW &&
+                srcYPos >= srcY && srcYPos < srcY + srcH)
             {
                 // 复制像素
                 *destRow = AlphaBlend(*destRow, srcPixels[srcYPos * srcWidth + srcXPos]);
