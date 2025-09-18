@@ -19,8 +19,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
     Audio_bg(301);
 
-    // GDI::addImageCommand(101, 0, 0, GAME_WIDTH, GAME_HEIGHT);
-
     TimePoint prev_time = Clock::now();
 
     int tickCount = 0;
@@ -51,8 +49,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
         GDI::text(fpsText, 10, 10);
 
-        // GDI::image(101, 0, 0, 640, 160, true);
-        GDI::imageEx(101, 0, 0, 320, 80, true, 0, 128, 32, 32);
+        GDI::imageEx(101, 64, 96, 64, 64, true, 576, 96, 64, 64);
+        GDI::imageEx(101, 140, 96, 64, 64, false, 576, 96, 64, 64);
 
         GDI::flush(dt);
     }
