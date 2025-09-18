@@ -449,7 +449,6 @@ void GDI::tick(float /*dt*/)
         {
             if (c.type == Type::DrawImage)
             {
-                // 在tick函数中，处理镜像图像
                 if (c.flip)
                 {
                     // 检查镜像缓存
@@ -458,10 +457,24 @@ void GDI::tick(float /*dt*/)
                     if (it != flippedImageCache.end())
                     {
                         const CachedImage &cached = it->second;
-                        // 使用快速路径（无裁剪）
-                        DrawImageFast(destPixels, backWidth, backHeight, backStride,
-                                      cached.pixels.get(), cached.width, cached.height,
-                                      c.x, c.y, c.w, c.h, false); // 注意：这里传递false，因为图像已经预翻转了
+                        if (c.hasSrcRect)
+                        {
+                            // 计算在预计算镜像中的源矩形：水平翻转后，源X坐标需要调整
+                            int newSrcX = cached.width - c.srcX - c.srcW;
+                            int newSrcY = c.srcY;
+                            // 使用DrawImageWithCrop绘制镜像图像（注意：这里flip参数为false，因为图像已经预翻转了）
+                            DrawImageWithCrop(destPixels, backWidth, backHeight, backStride,
+                                              cached.pixels.get(), cached.width, cached.height,
+                                              c.x, c.y, c.w, c.h,
+                                              newSrcX, newSrcY, c.srcW, c.srcH, false);
+                        }
+                        else
+                        {
+                            // 没有源矩形，使用快速路径（无裁剪）
+                            DrawImageFast(destPixels, backWidth, backHeight, backStride,
+                                          cached.pixels.get(), cached.width, cached.height,
+                                          c.x, c.y, c.w, c.h, false); // 注意：这里传递false，因为图像已经预翻转了
+                        }
                         continue;
                     }
                 }
