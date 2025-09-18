@@ -3,12 +3,19 @@
 #include <memory>
 using namespace Gdiplus;
 #pragma comment(lib, "Gdiplus.lib")
-GDI::GDI(HWND h) : hwnd(h)
-{
-}
 
-void GDI::init()
+HWND GDI::hwnd;
+using Command = std::function<void()>;
+ULONG_PTR GDI::gdiplusToken;
+std::unique_ptr<Gdiplus::Bitmap> GDI::memBitmap;
+std::unique_ptr<Gdiplus::Graphics> GDI::memGraphics;
+std::unique_ptr<Gdiplus::Pen> GDI::pen;
+std::unordered_map<int, std::unique_ptr<Gdiplus::Bitmap>> GDI::bitmapCache;
+std::vector<Command> GDI::commands;
+
+void GDI::init(HWND h)
 {
+    hwnd = h;
     // Initialize GDI+.
     GdiplusStartupInput gdiplusStartupInput;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
@@ -53,7 +60,10 @@ void GDI::tick()
     // 内存位图上的绘制,类似离线canvas
     memGraphics->DrawLine(pen.get(), 0, 0, 640, 160);
 
-    image(101, 0, 0, 640, 160);
+    for (auto cmd : commands)
+    {
+        cmd();
+    }
 
     // 绘制内存位图,创建一个 Graphics(hdc) 对象开销几乎可以忽略（远比 DrawImage 轻），最安全的做法就是每帧临时建一个
     HDC hdc = GetDC(hwnd);
@@ -64,9 +74,9 @@ void GDI::tick()
         ReleaseDC(hwnd, hdc);
     }
 }
-
-void GDI::image(int resId, int x, int y, int w, int h)
+void GDI::image(int resId, int x, int y, int w, int h, bool flip)
 {
+    //todo flip
     auto image = GDI::LoadBitmapFromRCDATA(resId);
     if (image)
     {

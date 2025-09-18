@@ -1,3 +1,4 @@
 ﻿#pragma once
 
-extern 
+extern int GAME_WIDTH;
+extern int GAME_HEIGHT;

@@ -28,7 +28,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Msimg32)
 # 静态编译选项
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:/W3 /MTd /Zi /EHsc /utf-8>
-    $<$<CONFIG:Release>:/O2 /Ob2 /Oi /GL /Gw /fp:fast /GR- /DNDEBUG /MT /EHsc /utf-8>
+    $<$<CONFIG:Release>:/O2 /Ob2 /Oi /GL /Gw /fp:fast /DNDEBUG /MT /EHsc /utf-8>
 )
 target_link_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Release>:/LTCG /INCREMENTAL:NO /OPT:REF /OPT:ICF>

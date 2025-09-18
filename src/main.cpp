@@ -2,22 +2,28 @@
 #include "GDI.h"
 #include "Audio.h"
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
-    PC pc(hInstance, 640, 160, "Test Game");
+extern int GAME_WIDTH;
+extern int GAME_HEIGHT;
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
+{
+    PC pc(hInstance, GAME_WIDTH, GAME_HEIGHT, "Hammer");
     pc.show();
 
-    GDI gdi(pc.window());
-    gdi.init();
+    GDI::init(pc.window());
 
-    Audio_bg(301);  // 示例背景音乐
+    Audio_bg(301);
+
+    GDI::addImageCommand(101, 0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     bool running = true;
-    while (running) {
-        if (!pc.tick()) break;  // 处理窗口消息
-        gdi.tick();
+    while (running)
+    {
+        if (!pc.tick())
+            break;
+        GDI::tick();
     }
 
-    gdi.end();
+    GDI::end();
     Audio_shutdown();
     return 0;
 }

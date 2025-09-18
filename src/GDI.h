@@ -3,34 +3,45 @@
 #include <gdiplus.h>
 #include <memory>
 #include <unordered_map>
+#include <vector>
+#include <functional>
 class GDI
 {
 public:
-    GDI(HWND h);
+    GDI() = delete;
     ~GDI() = default;
 
-    void init();
+    static void init(HWND h);
 
-    void tick();
+    static void tick();
 
-    void image(int resId, int x, int y, int w, int h);
+    static void end();
+    using Command = std::function<void()>;
 
-    void end();
+    static void image(int resId, int x, int y, int w, int h, bool flip = false);
+    static void addImageCommand(int resId, int x, int y, int w, int h, bool flip = false)
+    {
+        commands.push_back([resId, x, y, w, h, flip]()
+                           { image(resId, x, y, w, h, flip); });
+    }
 
 private:
-    HWND hwnd;
+    static HWND hwnd;
 
     // GDI+释放对象
-    ULONG_PTR gdiplusToken;
+    static ULONG_PTR gdiplusToken;
     // 双缓冲的内存位图
-    std::unique_ptr<Gdiplus::Bitmap> memBitmap;
+    static std::unique_ptr<Gdiplus::Bitmap> memBitmap;
     // 内存双缓冲
-    std::unique_ptr<Gdiplus::Graphics> memGraphics;
+    static std::unique_ptr<Gdiplus::Graphics> memGraphics;
     // 笔缓存
-    std::unique_ptr<Gdiplus::Pen> pen;
+    static std::unique_ptr<Gdiplus::Pen> pen;
 
     // 图片缓存
-    std::unordered_map<int, std::unique_ptr<Gdiplus::Bitmap>> bitmapCache;
+    static std::unordered_map<int, std::unique_ptr<Gdiplus::Bitmap>> bitmapCache;
     // rcdata图片资源
-    Gdiplus::Bitmap *LoadBitmapFromRCDATA(int resId);
+    static Gdiplus::Bitmap *LoadBitmapFromRCDATA(int resId);
+
+    // 绘制函数指针
+    static std::vector<Command> commands;
 };
