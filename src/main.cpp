@@ -50,10 +50,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::tick(dt);
 
         GDI::text(fpsText, 10, 10);
-        GDI::image(101, 0, 0, GAME_WIDTH, GAME_HEIGHT);
-        GDI::image(101, 0, 0, GAME_WIDTH / 2, GAME_HEIGHT / 2);
-        GDI::image(101, GAME_WIDTH / 2, 0, GAME_WIDTH / 2, GAME_HEIGHT / 2);
-        GDI::image(101, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+
+        // GDI::image(101, 0, 0, 640, 160, true);
+        GDI::imageEx(101, 0, 0, 320, 80, true, 0, 128, 32, 32);
 
         GDI::flush(dt);
     }

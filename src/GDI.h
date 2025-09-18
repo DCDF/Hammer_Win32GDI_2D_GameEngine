@@ -20,7 +20,12 @@ public:
 
     // 向后兼容接口（旧代码可能直接调用）
     static void image(int resId, int x, int y, int w, int h, bool flip = false);
-    static void text(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::White);
+    static void text(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::Black);
+
+    // 新增扩展接口
+    static void imageEx(int resId, int x, int y, int w, int h,
+                        bool flip = false, int srcX = 0, int srcY = 0,
+                        int srcW = 0, int srcH = 0);
 
     // 轻量命令类型（避免 std::function 分配）
     enum class Type : uint8_t
@@ -36,13 +41,17 @@ public:
         int resId = 0;
         int x = 0, y = 0, w = 0, h = 0;
         bool flip = false;
+        // 新增裁剪参数
+        int srcX = 0, srcY = 0, srcW = 0, srcH = 0;
+        bool hasSrcRect = false;
         // DrawText params
         std::wstring text;
         float fontSize = 12.0f;
         Gdiplus::Color color = Gdiplus::Color::Black;
 
         // constructors
-        static Command MakeImage(int resId_, int x_, int y_, int w_, int h_, bool flip_ = false)
+        static Command MakeImage(int resId_, int x_, int y_, int w_, int h_, bool flip_ = false,
+                                 int srcX_ = 0, int srcY_ = 0, int srcW_ = 0, int srcH_ = 0)
         {
             Command c;
             c.type = Type::DrawImage;
@@ -52,9 +61,14 @@ public:
             c.w = w_;
             c.h = h_;
             c.flip = flip_;
+            c.srcX = srcX_;
+            c.srcY = srcY_;
+            c.srcW = srcW_;
+            c.srcH = srcH_;
+            c.hasSrcRect = (srcW_ > 0 && srcH_ > 0);
             return c;
         }
-        static Command MakeText(const std::wstring &txt, int x_, int y_, float size_ = 12.0f, Gdiplus::Color color_ = Gdiplus::Color::White)
+        static Command MakeText(const std::wstring &txt, int x_, int y_, float size_ = 12.0f, Gdiplus::Color color_ = Gdiplus::Color::Black)
         {
             Command c;
             c.type = Type::DrawText;
@@ -72,6 +86,14 @@ public:
     {
         commands.emplace_back(Command::MakeImage(resId, x, y, w, h, flip));
     }
+
+    // 新增扩展push命令
+    static void pushImageEx(int resId, int x, int y, int w, int h,
+                            bool flip, int srcX, int srcY, int srcW, int srcH)
+    {
+        commands.emplace_back(Command::MakeImage(resId, x, y, w, h, flip, srcX, srcY, srcW, srcH));
+    }
+
     static void pushText(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::Black)
     {
         commands.emplace_back(Command::MakeText(txt, x, y, size, color));
