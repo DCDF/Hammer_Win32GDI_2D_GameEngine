@@ -1,47 +1,75 @@
-﻿#include "GDI.h"
-#include <objidl.h>
-#include <cassert>
-#include <algorithm>
-#include <cstdint>
+﻿// ---------------------------------------------------------------------------
+// --- 预处理器和头文件包含顺序 ---
+// 这是解决编译错误的关键部分
+// ---------------------------------------------------------------------------
 
-// 在包含 Windows 头文件之前定义这些宏以避免冲突
+// 1. 定义 NOMINMAX，防止 Windows.h 定义 min/max 宏，避免与 std::min/max 冲突。
 #define NOMINMAX
-#include <Windows.h>
-#undef NOMINMAX
 
-using namespace Gdiplus;
+// 2. 包含核心的 Windows 头文件和 C++ 标准库。
+#include <windows.h>
+#include <algorithm> // 包含 std::min 和 std::max
+#include <cmath>
+#include <shlwapi.h> // 包含 SHCreateMemStream
+
+// 3. 为 GDI+ "手动" 提供它需要的 min 和 max。
+//    由于 NOMINMAX 已经生效，GDI+ 头文件找不到 min/max 宏。
+//    我们通过 using 声明，将 std::min 和 std::max 引入全局命名空间，
+//    这样 GDI+ 头文件就能找到它们了。
+using std::max;
+using std::min;
+
+// 4. 现在可以安全地包含我们自己的头文件，它会间接包含 GDI+ 头文件。
+#include "GDI.h"
+
+// 5. 链接必要的库
 #pragma comment(lib, "Gdiplus.lib")
+#pragma comment(lib, "Msimg32.lib")
+#pragma comment(lib, "shlwapi.lib")
 
+// ---------------------------------------------------------------------------
+// --- 静态成员初始化 ---
+// ---------------------------------------------------------------------------
 HWND GDI::hwnd = nullptr;
 ULONG_PTR GDI::gdiplusToken = 0;
-
-void *GDI::backPixels = nullptr;
+uint32_t *GDI::backPixels = nullptr;
 HBITMAP GDI::hBackBitmap = nullptr;
+HDC GDI::hBackDC = nullptr;
 BITMAPINFO GDI::backInfo = {};
 int GDI::backWidth = 0;
 int GDI::backHeight = 0;
-int GDI::backStride = 0;
-
-std::unique_ptr<Gdiplus::Bitmap> GDI::memBitmap = nullptr;
 std::unique_ptr<Gdiplus::Graphics> GDI::memGraphics = nullptr;
-std::unique_ptr<Gdiplus::Font> GDI::defaultFont = nullptr;
-std::unordered_map<int, std::unique_ptr<Gdiplus::Bitmap>> GDI::bitmapCache;
+std::unordered_map<int, CachedImage> GDI::imageCache;
+std::unordered_map<float, HFONT> GDI::fontCache;
 std::vector<GDI::Command> GDI::commands;
 
-// 新增：直接像素访问的图像缓存
-struct CachedImage
+// ---------------------------------------------------------------------------
+// --- 内部辅助函数 ---
+// ---------------------------------------------------------------------------
+namespace
 {
-    int width;
-    int height;
-    int stride;
-    std::unique_ptr<uint32_t[]> pixels; // BGRA格式
-};
-static std::unordered_map<int, CachedImage> directImageCache;
+    inline uint32_t AlphaBlendPixel_32bpp(uint32_t dest, uint32_t src)
+    {
+        uint32_t src_a = src >> 24;
+        if (src_a == 255)
+            return src;
+        if (src_a == 0)
+            return dest;
 
-// 新增：镜像图像缓存
-static std::unordered_map<int, CachedImage> flippedImageCache;
+        uint32_t inv_a = 256 - src_a;
+        uint32_t dest_rb = dest & 0x00FF00FF;
+        uint32_t dest_g = dest & 0x0000FF00;
+        dest_rb = (dest_rb * inv_a) >> 8;
+        dest_g = (dest_g * inv_a) >> 8;
+        dest_rb &= 0x00FF00FF;
+        dest_g &= 0x0000FF00;
+        return src + dest_rb + dest_g;
+    }
+}
 
-static inline int AlignStride(int w) { return (w * 4 + 3) & ~3; } // 32bpp with 4-byte alignment
+// ---------------------------------------------------------------------------
+// --- GDI 类成员函数实现 ---
+// ---------------------------------------------------------------------------
 
 bool GDI::createBackBuffer(int w, int h)
 {
@@ -51,563 +79,334 @@ bool GDI::createBackBuffer(int w, int h)
 
     backWidth = w;
     backHeight = h;
-    backStride = AlignStride(backWidth);
 
     ZeroMemory(&backInfo, sizeof(backInfo));
     backInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    backInfo.bmiHeader.biWidth = backWidth;
-    backInfo.bmiHeader.biHeight = -backHeight; // top-down DIB
+    backInfo.bmiHeader.biWidth = w;
+    backInfo.bmiHeader.biHeight = -h;
     backInfo.bmiHeader.biPlanes = 1;
     backInfo.bmiHeader.biBitCount = 32;
     backInfo.bmiHeader.biCompression = BI_RGB;
-    backInfo.bmiHeader.biSizeImage = backStride * backHeight;
 
     HDC hdc = GetDC(hwnd);
-    void *pv = nullptr;
-    hBackBitmap = CreateDIBSection(hdc, &backInfo, DIB_RGB_COLORS, &pv, NULL, 0);
+    hBackBitmap = CreateDIBSection(hdc, &backInfo, DIB_RGB_COLORS, (void **)&backPixels, NULL, 0);
+    if (!hBackBitmap)
+    {
+        ReleaseDC(hwnd, hdc);
+        return false;
+    }
+
+    hBackDC = CreateCompatibleDC(hdc);
+    SelectObject(hBackDC, hBackBitmap);
     ReleaseDC(hwnd, hdc);
 
-    if (!hBackBitmap || !pv)
-    {
-        destroyBackBuffer();
-        return false;
-    }
-
-    backPixels = pv;
-
-    // Wrap the pixel buffer into a Gdiplus::Bitmap (zero-copy)
-    memBitmap = std::make_unique<Gdiplus::Bitmap>(backWidth, backHeight, backStride, PixelFormat32bppPARGB, reinterpret_cast<BYTE *>(backPixels));
-    if (!memBitmap || memBitmap->GetLastStatus() != Ok)
-    {
-        destroyBackBuffer();
-        return false;
-    }
-
-    memGraphics = std::make_unique<Gdiplus::Graphics>(memBitmap.get());
-    // 降低绘制质量以提高性能 - 对于游戏这是可接受的权衡
-    memGraphics->SetSmoothingMode(SmoothingModeNone);
-    memGraphics->SetInterpolationMode(InterpolationModeLowQuality);
-    memGraphics->SetTextRenderingHint(TextRenderingHintSystemDefault);
+    SetBkMode(hBackDC, TRANSPARENT);
 
     return true;
 }
 
 void GDI::destroyBackBuffer()
 {
-    memGraphics.reset();
-    memBitmap.reset();
-
+    if (hBackDC)
+    {
+        DeleteDC(hBackDC);
+        hBackDC = nullptr;
+    }
     if (hBackBitmap)
     {
         DeleteObject(hBackBitmap);
         hBackBitmap = nullptr;
     }
     backPixels = nullptr;
-    backWidth = backHeight = backStride = 0;
-    ZeroMemory(&backInfo, sizeof(backInfo));
+    backWidth = backHeight = 0;
 }
 
 void GDI::init(HWND h)
 {
     hwnd = h;
-    GdiplusStartupInput gdiplusStartupInput;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
     RECT rc;
     GetClientRect(hwnd, &rc);
-    int w = rc.right - rc.left;
-    int hgt = rc.bottom - rc.top;
-
-    if (!createBackBuffer(w, hgt))
+    if (!createBackBuffer(rc.right - rc.left, rc.bottom - rc.top))
     {
-        // 如果创建DIBSection失败，回退到GDI+
-        memBitmap = std::make_unique<Gdiplus::Bitmap>(w, hgt, PixelFormat32bppPARGB);
-        memGraphics = std::make_unique<Gdiplus::Graphics>(memBitmap.get());
-        memGraphics->SetSmoothingMode(SmoothingModeNone);
-        memGraphics->SetInterpolationMode(InterpolationModeLowQuality);
-        memGraphics->SetTextRenderingHint(TextRenderingHintSystemDefault);
+        memGraphics = std::make_unique<Gdiplus::Graphics>(h);
     }
 
-    defaultFont = std::make_unique<Gdiplus::Font>(L"Arial", 12.0f, FontStyleRegular, UnitPixel);
-    commands.reserve(512);
+    commands.reserve(1024);
 }
 
 void GDI::end()
 {
-    commands.clear();
-    bitmapCache.clear();
-    directImageCache.clear();
-    flippedImageCache.clear();
-    defaultFont.reset();
+    for (auto const &[key, val] : fontCache)
+    {
+        DeleteObject(val);
+    }
+    fontCache.clear();
 
+    imageCache.clear();
+    commands.clear();
     destroyBackBuffer();
 
+    memGraphics.reset();
     if (gdiplusToken)
     {
-        GdiplusShutdown(gdiplusToken);
+        Gdiplus::GdiplusShutdown(gdiplusToken);
         gdiplusToken = 0;
     }
 }
 
 void GDI::begin(float /*dt*/)
 {
-    if (!memGraphics && backPixels)
+    if (backPixels)
     {
-        // 使用DIBSection时，直接清空内存为透明
-        uint32_t *pixels = static_cast<uint32_t *>(backPixels);
-        const int totalPixels = backHeight * (backStride / 4);
-        for (int i = 0; i < totalPixels; ++i)
-        {
-            pixels[i] = 0x00000000; // 透明背景 (ARGB: 0,0,0,0)
-        }
+        memset(backPixels, 0, backWidth * backHeight * 4);
     }
     else if (memGraphics)
     {
-        // 使用GDI+时，使用Clear
-        Color bg(0, 0, 0, 0); // 完全透明
+        Gdiplus::Color bg(0, 0, 0, 0);
         memGraphics->Clear(bg);
     }
 }
 
-// 正确的预乘 Alpha 混合函数
-static inline uint32_t AlphaBlend(uint32_t dest, uint32_t src)
+CachedImage *GDI::loadImage(int resId)
 {
-    // 提取源像素的 Alpha 通道
-    uint8_t alpha = (src >> 24) & 0xFF;
+    auto it = imageCache.find(resId);
+    if (it != imageCache.end())
+    {
+        return &it->second;
+    }
 
-    // 如果完全透明，直接返回目标
-    if (alpha == 0)
-        return dest;
+    HMODULE hMod = GetModuleHandleW(NULL);
+    HRSRC hResInfo = FindResource(hMod, MAKEINTRESOURCE(resId), RT_RCDATA);
+    if (!hResInfo)
+        return nullptr;
 
-    // 如果完全不透明，直接返回源
-    if (alpha == 255)
-        return src;
+    DWORD resSize = SizeofResource(hMod, hResInfo);
+    HGLOBAL hResData = LoadResource(hMod, hResInfo);
+    if (!hResData || resSize == 0)
+        return nullptr;
 
-    // 提取源和目标颜色分量（注意：源是预乘的）
-    uint8_t src_r = (src >> 16) & 0xFF;
-    uint8_t src_g = (src >> 8) & 0xFF;
-    uint8_t src_b = src & 0xFF;
+    void *pRes = LockResource(hResData);
+    if (!pRes)
+        return nullptr;
 
-    uint8_t dest_r = (dest >> 16) & 0xFF;
-    uint8_t dest_g = (dest >> 8) & 0xFF;
-    uint8_t dest_b = dest & 0xFF;
+    IStream *pStream = SHCreateMemStream((const BYTE *)pRes, resSize);
+    if (!pStream)
+        return nullptr;
 
-    // 计算逆 Alpha 值
-    uint8_t inv_alpha = 255 - alpha;
+    std::unique_ptr<Gdiplus::Bitmap> bmp(Gdiplus::Bitmap::FromStream(pStream));
+    pStream->Release();
 
-    // 对于预乘 Alpha 图像，混合公式是：result = src + dest * (1 - alpha)
-    uint8_t out_r = src_r + (dest_r * inv_alpha) / 255;
-    uint8_t out_g = src_g + (dest_g * inv_alpha) / 255;
-    uint8_t out_b = src_b + (dest_b * inv_alpha) / 255;
+    if (!bmp || bmp->GetLastStatus() != Gdiplus::Ok)
+    {
+        return nullptr;
+    }
 
-    // 组合结果（保持目标 Alpha 不变）
-    return (dest & 0xFF000000) | (out_r << 16) | (out_g << 8) | out_b;
+    int width = bmp->GetWidth();
+    int height = bmp->GetHeight();
+
+    CachedImage cached;
+    cached.width = width;
+    cached.height = height;
+    cached.pixels = std::make_unique<uint32_t[]>(width * height);
+    cached.isOpaque = true;
+
+    Gdiplus::BitmapData bmpData;
+    Gdiplus::Rect rect(0, 0, width, height);
+    if (bmp->LockBits(&rect, Gdiplus::ImageLockModeRead, PixelFormat32bppPARGB, &bmpData) != Gdiplus::Ok)
+    {
+        return nullptr;
+    }
+
+    uint32_t *srcPixels = (uint32_t *)bmpData.Scan0;
+    for (int i = 0; i < width * height; ++i)
+    {
+        uint8_t alpha = srcPixels[i] >> 24;
+        if (alpha < 255)
+        {
+            cached.isOpaque = false;
+        }
+        cached.pixels[i] = srcPixels[i];
+    }
+
+    bmp->UnlockBits(&bmpData);
+
+    auto [iter, success] = imageCache.emplace(resId, std::move(cached));
+    return &iter->second;
 }
 
-// 修复DrawImageFast函数
-static void DrawImageFast(uint32_t *destPixels, int destWidth, int destHeight, int destStride,
-                          const uint32_t *srcPixels, int srcWidth, int srcHeight,
-                          int destX, int destY, int destW, int destH, bool flip)
+HFONT GDI::getFont(float size)
 {
-    // 计算裁剪区域
-    int startX = (std::max)(0, destX);
-    int startY = (std::max)(0, destY);
-    int endX = (std::min)(destWidth, destX + destW);
-    int endY = (std::min)(destHeight, destY + destH);
+    auto it = fontCache.find(size);
+    if (it != fontCache.end())
+    {
+        return it->second;
+    }
 
-    if (startX >= endX || startY >= endY)
+    LOGFONTW lf = {0};
+    lf.lfHeight = -lround(size);
+    lf.lfWeight = FW_NORMAL;
+    wcscpy_s(lf.lfFaceName, LF_FACESIZE, L"Arial");
+    HFONT hf = CreateFontIndirectW(&lf);
+
+    fontCache[size] = hf;
+    return hf;
+}
+
+void GDI::drawImageFast(const Command &cmd)
+{
+    CachedImage *img = loadImage(cmd.resId);
+    if (!img)
         return;
 
-    // 逐行复制像素
-    for (int y = startY; y < endY; ++y)
+    int srcW = cmd.hasSrcRect ? cmd.srcW : img->width;
+    int srcH = cmd.hasSrcRect ? cmd.srcH : img->height;
+    int srcX = cmd.hasSrcRect ? cmd.srcX : 0;
+    int srcY = cmd.hasSrcRect ? cmd.srcY : 0;
+
+    if (srcW <= 0 || srcH <= 0)
+        return;
+
+    int destX1 = cmd.x;
+    int destY1 = cmd.y;
+    int destX2 = cmd.x + cmd.w;
+    int destY2 = cmd.y + cmd.h;
+
+    // NOMINMAX 已定义，可以直接使用 std::min/max，无需括号
+    int clipX1 = std::max(0, destX1);
+    int clipY1 = std::max(0, destY1);
+    int clipX2 = std::min(backWidth, destX2);
+    int clipY2 = std::min(backHeight, destY2);
+
+    if (clipX1 >= clipX2 || clipY1 >= clipY2)
+        return;
+
+    const int FRACT_BITS = 16;
+    const int FRACT_UNIT = 1 << FRACT_BITS;
+
+    uint64_t stepX_fixed = (uint64_t)srcW * FRACT_UNIT / cmd.w;
+    uint64_t stepY_fixed = (uint64_t)srcH * FRACT_UNIT / cmd.h;
+
+    uint64_t srcX_fixed_start = (uint64_t)(clipX1 - destX1) * stepX_fixed;
+    uint64_t srcY_fixed_start = (uint64_t)(clipY1 - destY1) * stepY_fixed;
+
+    uint32_t *pDestRow = backPixels + clipY1 * backWidth + clipX1;
+    uint64_t srcY_fixed = srcY_fixed_start;
+
+    for (int y = clipY1; y < clipY2; ++y)
     {
-        // 计算源图像Y坐标
-        int srcYPos = y - destY;
-        if (srcYPos < 0 || srcYPos >= srcHeight)
-            continue;
+        int current_srcY = srcY + static_cast<int>(srcY_fixed >> FRACT_BITS);
+        const uint32_t *pSrcRow = img->pixels.get() + current_srcY * img->width;
+        uint64_t srcX_fixed = srcX_fixed_start;
 
-        if (flip)
+        if (cmd.flip)
         {
-            // 水平翻转：从右向左复制
-            const uint32_t *srcRow = srcPixels + srcYPos * srcWidth;
-            uint32_t *destRow = destPixels + y * (destStride / 4) + startX;
-
-            for (int x = startX; x < endX; ++x)
+            if (img->isOpaque)
             {
-                int srcXPos = srcWidth - 1 - (x - destX);
-                if (srcXPos >= 0 && srcXPos < srcWidth)
+                for (int x = clipX1; x < clipX2; ++x)
                 {
-                    *destRow = AlphaBlend(*destRow, srcRow[srcXPos]);
+                    int current_srcX = srcX + srcW - 1 - static_cast<int>(srcX_fixed >> FRACT_BITS);
+                    pDestRow[x - clipX1] = pSrcRow[current_srcX];
+                    srcX_fixed += stepX_fixed;
                 }
-                destRow++;
+            }
+            else
+            {
+                for (int x = clipX1; x < clipX2; ++x)
+                {
+                    int current_srcX = srcX + srcW - 1 - static_cast<int>(srcX_fixed >> FRACT_BITS);
+                    uint32_t srcPixel = pSrcRow[current_srcX];
+                    pDestRow[x - clipX1] = AlphaBlendPixel_32bpp(pDestRow[x - clipX1], srcPixel);
+                    srcX_fixed += stepX_fixed;
+                }
             }
         }
         else
         {
-            // 正常复制：从左向右复制
-            const uint32_t *srcRow = srcPixels + srcYPos * srcWidth + (startX - destX);
-            uint32_t *destRow = destPixels + y * (destStride / 4) + startX;
-
-            int copyWidth = endX - startX;
-            for (int i = 0; i < copyWidth; i++)
+            if (img->isOpaque)
             {
-                *destRow = AlphaBlend(*destRow, srcRow[i]);
-                destRow++;
-            }
-        }
-    }
-}
-
-// 修复DrawImageWithCrop函数中的镜像处理
-static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeight, int destStride,
-                              const uint32_t *srcPixels, int srcWidth, int srcHeight,
-                              int destX, int destY, int destW, int destH,
-                              int srcX, int srcY, int srcW, int srcH, bool flip)
-{
-    // 如果没有指定源矩形，使用整个图像
-    if (srcW <= 0 || srcH <= 0)
-    {
-        srcX = 0;
-        srcY = 0;
-        srcW = srcWidth;
-        srcH = srcHeight;
-    }
-
-    // 计算缩放比例
-    float scaleX = static_cast<float>(destW) / srcW;
-    float scaleY = static_cast<float>(destH) / srcH;
-
-    // 计算目标区域
-    int startX = (std::max)(0, destX);
-    int startY = (std::max)(0, destY);
-    int endX = (std::min)(destWidth, destX + destW);
-    int endY = (std::min)(destHeight, destY + destH);
-
-    if (startX >= endX || startY >= endY)
-        return;
-
-    // 逐行复制像素（支持镜像和裁剪）
-    for (int y = startY; y < endY; ++y)
-    {
-        // 计算源图像Y坐标
-        int srcYPos = srcY + static_cast<int>((y - destY) / scaleY);
-        if (srcYPos < srcY || srcYPos >= srcY + srcH)
-            continue;
-
-        uint32_t *destRow = destPixels + y * (destStride / 4) + startX;
-
-        for (int x = startX; x < endX; ++x)
-        {
-            // 计算源图像X坐标（处理镜像）
-            int srcXPos;
-            if (flip)
-            {
-                // 修复：正确计算镜像坐标
-                srcXPos = srcX + srcW - 1 - static_cast<int>((x - destX) / scaleX);
+                if (cmd.w == srcW && cmd.h == srcH)
+                {
+                    memcpy(pDestRow, pSrcRow + srcX + static_cast<int>(srcX_fixed_start >> FRACT_BITS), (clipX2 - clipX1) * 4);
+                }
+                else
+                {
+                    for (int x = clipX1; x < clipX2; ++x)
+                    {
+                        int current_srcX = srcX + static_cast<int>(srcX_fixed >> FRACT_BITS);
+                        pDestRow[x - clipX1] = pSrcRow[current_srcX];
+                        srcX_fixed += stepX_fixed;
+                    }
+                }
             }
             else
             {
-                srcXPos = srcX + static_cast<int>((x - destX) / scaleX);
+                for (int x = clipX1; x < clipX2; ++x)
+                {
+                    int current_srcX = srcX + static_cast<int>(srcX_fixed >> FRACT_BITS);
+                    uint32_t srcPixel = pSrcRow[current_srcX];
+                    pDestRow[x - clipX1] = AlphaBlendPixel_32bpp(pDestRow[x - clipX1], srcPixel);
+                    srcX_fixed += stepX_fixed;
+                }
             }
-
-            if (srcXPos >= srcX && srcXPos < srcX + srcW &&
-                srcYPos >= srcY && srcYPos < srcY + srcH)
-            {
-                // 复制像素
-                *destRow = AlphaBlend(*destRow, srcPixels[srcYPos * srcWidth + srcXPos]);
-            }
-
-            destRow++;
         }
+        pDestRow += backWidth;
+        srcY_fixed += stepY_fixed;
     }
-}
-
-// 预加载图像到直接像素缓存
-static bool PreloadImageToCache(int resId)
-{
-    if (directImageCache.find(resId) != directImageCache.end())
-        return true;
-
-    // 由于LoadBitmapFromRCDATA是私有的，我们需要复制其实现到这里
-    HMODULE hMod = GetModuleHandleW(NULL);
-    HRSRC hrs = FindResource(hMod, MAKEINTRESOURCE(resId), RT_RCDATA);
-    if (!hrs)
-        return false;
-    HGLOBAL hRes = LoadResource(hMod, hrs);
-    if (!hRes)
-        return false;
-    DWORD cb = SizeofResource(hMod, hrs);
-    void *p = LockResource(hRes);
-    if (!p || cb == 0)
-        return false;
-
-    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, cb);
-    if (!hMem)
-        return false;
-    void *dst = GlobalLock(hMem);
-    memcpy(dst, p, cb);
-    GlobalUnlock(hMem);
-
-    IStream *stream = nullptr;
-    if (CreateStreamOnHGlobal(hMem, TRUE, &stream) != S_OK)
-    {
-        GlobalFree(hMem);
-        return false;
-    }
-
-    Bitmap *bmp = Bitmap::FromStream(stream);
-    stream->Release();
-    if (!bmp || bmp->GetLastStatus() != Ok)
-    {
-        delete bmp;
-        return false;
-    }
-
-    // 获取图像尺寸
-    int width = bmp->GetWidth();
-    int height = bmp->GetHeight();
-
-    // 创建缓存
-    CachedImage cached;
-    cached.width = width;
-    cached.height = height;
-    cached.stride = width * 4;
-    cached.pixels = std::make_unique<uint32_t[]>(width * height);
-
-    // 锁定位图并复制像素数据
-    BitmapData bmpData;
-    Rect rect(0, 0, width, height);
-
-    // 确保使用 PARGB 格式
-    if (bmp->LockBits(&rect, ImageLockModeRead, PixelFormat32bppPARGB, &bmpData) == Ok)
-    {
-        uint32_t *srcPixels = static_cast<uint32_t *>(bmpData.Scan0);
-        std::copy(srcPixels, srcPixels + width * height, cached.pixels.get());
-        bmp->UnlockBits(&bmpData);
-
-        directImageCache[resId] = std::move(cached);
-        delete bmp; // 清理临时位图
-        return true;
-    }
-
-    delete bmp; // 清理临时位图
-    return false;
-}
-
-// 预计算镜像图像
-static bool PreloadFlippedImageToCache(int resId)
-{
-    int flippedId = -resId; // 使用负ID表示镜像版本
-
-    if (flippedImageCache.find(flippedId) != flippedImageCache.end())
-        return true;
-
-    // 获取原始图像
-    auto it = directImageCache.find(resId);
-    if (it == directImageCache.end())
-        return false;
-
-    const CachedImage &original = it->second;
-
-    // 创建镜像版本
-    CachedImage flipped;
-    flipped.width = original.width;
-    flipped.height = original.height;
-    flipped.stride = original.stride;
-    flipped.pixels = std::make_unique<uint32_t[]>(original.width * original.height);
-
-    // 水平翻转图像
-    for (int y = 0; y < original.height; ++y)
-    {
-        for (int x = 0; x < original.width; ++x)
-        {
-            int srcIndex = y * original.width + x;
-            int dstIndex = y * original.width + (original.width - 1 - x);
-            flipped.pixels[dstIndex] = original.pixels[srcIndex];
-        }
-    }
-
-    flippedImageCache[flippedId] = std::move(flipped);
-    return true;
 }
 
 void GDI::tick(float /*dt*/)
 {
-    if (!memGraphics && !backPixels)
-    {
-        commands.clear();
-        return;
-    }
-
-    // 如果有DIBSection，使用直接内存操作处理图像
     if (backPixels)
     {
-        uint32_t *destPixels = static_cast<uint32_t *>(backPixels);
-
-        // 处理图像命令
         for (const auto &c : commands)
         {
             if (c.type == Type::DrawImage)
             {
-                if (c.flip)
-                {
-                    // 检查镜像缓存
-                    int flippedId = -c.resId;
-                    auto it = flippedImageCache.find(flippedId);
-                    if (it != flippedImageCache.end())
-                    {
-                        const CachedImage &cached = it->second;
-                        if (c.hasSrcRect)
-                        {
-                            // 计算在预计算镜像中的源矩形：水平翻转后，源X坐标需要调整
-                            int newSrcX = cached.width - c.srcX - c.srcW;
-                            int newSrcY = c.srcY;
-                            // 使用DrawImageWithCrop绘制镜像图像（注意：这里flip参数为false，因为图像已经预翻转了）
-                            DrawImageWithCrop(destPixels, backWidth, backHeight, backStride,
-                                              cached.pixels.get(), cached.width, cached.height,
-                                              c.x, c.y, c.w, c.h,
-                                              newSrcX, newSrcY, c.srcW, c.srcH, false);
-                        }
-                        else
-                        {
-                            // 没有源矩形，使用快速路径（无裁剪）
-                            DrawImageFast(destPixels, backWidth, backHeight, backStride,
-                                          cached.pixels.get(), cached.width, cached.height,
-                                          c.x, c.y, c.w, c.h, false); // 注意：这里传递false，因为图像已经预翻转了
-                        }
-                        continue;
-                    }
-                }
-
-                // 检查普通缓存
-                auto it = directImageCache.find(c.resId);
-                if (it != directImageCache.end())
-                {
-                    const CachedImage &cached = it->second;
-
-                    // 根据是否需要裁剪选择不同的绘制函数
-                    if (c.hasSrcRect)
-                    {
-                        // 使用支持裁剪的较慢路径
-                        DrawImageWithCrop(destPixels, backWidth, backHeight, backStride,
-                                          cached.pixels.get(), cached.width, cached.height,
-                                          c.x, c.y, c.w, c.h,
-                                          c.srcX, c.srcY, c.srcW, c.srcH, c.flip);
-                    }
-                    else
-                    {
-                        // 使用快速路径（无裁剪）
-                        DrawImageFast(destPixels, backWidth, backHeight, backStride,
-                                      cached.pixels.get(), cached.width, cached.height,
-                                      c.x, c.y, c.w, c.h, c.flip);
-                    }
-                }
-                else
-                {
-                    // 回退到GDI+绘制
-                    Bitmap *img = LoadBitmapFromRCDATA(c.resId);
-                    if (img && memGraphics)
-                    {
-                        if (c.hasSrcRect)
-                        {
-                            // 绘制裁剪区域
-                            Rect destRect(c.x, c.y, c.w, c.h);
-                            Rect srcRect(c.srcX, c.srcY, c.srcW, c.srcH);
-
-                            if (c.flip)
-                            {
-                                // 镜像翻转：先水平翻转整个图像，然后绘制裁剪区域
-                                memGraphics->DrawImage(img, destRect,
-                                                       srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height,
-                                                       UnitPixel, nullptr, nullptr, nullptr);
-                            }
-                            else
-                            {
-                                memGraphics->DrawImage(img, destRect,
-                                                       srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height,
-                                                       UnitPixel);
-                            }
-                        }
-                        else
-                        {
-                            if (c.flip)
-                            {
-                                // 镜像翻转整个图像
-                                memGraphics->DrawImage(img,
-                                                       Rect(c.x + c.w, c.y, -c.w, c.h),
-                                                       0, 0, img->GetWidth(), img->GetHeight(),
-                                                       UnitPixel);
-                            }
-                            else
-                            {
-                                memGraphics->DrawImage(img, c.x, c.y, c.w, c.h);
-                            }
-                        }
-                    }
-                }
+                drawImageFast(c);
+            }
+        }
+        for (const auto &c : commands)
+        {
+            if (c.type == Type::DrawText)
+            {
+                HFONT hf = getFont(c.fontSize);
+                SelectObject(hBackDC, hf);
+                Gdiplus::Color gdiColor = c.color;
+                SetTextColor(hBackDC, RGB(gdiColor.GetR(), gdiColor.GetG(), gdiColor.GetB()));
+                TextOutW(hBackDC, c.x, c.y, c.text.c_str(), (int)c.text.length());
             }
         }
     }
     else if (memGraphics)
     {
-        // 没有DIBSection，使用GDI+绘制图像
+        Gdiplus::Font font(L"Arial", 12.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
         for (const auto &c : commands)
         {
             if (c.type == Type::DrawImage)
             {
-                Bitmap *img = LoadBitmapFromRCDATA(c.resId);
-                if (img)
+                CachedImage *imgData = loadImage(c.resId);
+                if (imgData)
                 {
+                    Gdiplus::Bitmap bmp(imgData->width, imgData->height, imgData->width * 4, PixelFormat32bppPARGB, (BYTE *)imgData->pixels.get());
                     if (c.hasSrcRect)
                     {
-                        // 绘制裁剪区域
-                        Rect destRect(c.x, c.y, c.w, c.h);
-                        Rect srcRect(c.srcX, c.srcY, c.srcW, c.srcH);
-
-                        if (c.flip)
-                        {
-                            // 镜像翻转：先水平翻转整个图像，然后绘制裁剪区域
-                            memGraphics->DrawImage(img, destRect,
-                                                   srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height,
-                                                   UnitPixel, nullptr, nullptr, nullptr);
-                        }
-                        else
-                        {
-                            memGraphics->DrawImage(img, destRect,
-                                                   srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height,
-                                                   UnitPixel);
-                        }
+                        memGraphics->DrawImage(&bmp, Gdiplus::Rect(c.x, c.y, c.w, c.h), c.srcX, c.srcY, c.srcW, c.srcH, Gdiplus::UnitPixel);
                     }
                     else
                     {
-                        if (c.flip)
-                        {
-                            // 镜像翻转整个图像
-                            memGraphics->DrawImage(img,
-                                                   Rect(c.x + c.w, c.y, -c.w, c.h),
-                                                   0, 0, img->GetWidth(), img->GetHeight(),
-                                                   UnitPixel);
-                        }
-                        else
-                        {
-                            memGraphics->DrawImage(img, c.x, c.y, c.w, c.h);
-                        }
+                        memGraphics->DrawImage(&bmp, c.x, c.y, c.w, c.h);
                     }
                 }
             }
-        }
-    }
-
-    // 处理文本命令 - 无论是否有DIBSection，都使用GDI+绘制文本
-    // 注意：文本应该在所有图像之后绘制，以确保文本显示在最上面
-    for (const auto &c : commands)
-    {
-        if (c.type == Type::DrawText && memGraphics)
-        {
-            // 文本绘制使用GDI+
-            SolidBrush brush(c.color);
-            PointF pt(static_cast<REAL>(c.x), static_cast<REAL>(c.y));
-            memGraphics->DrawString(c.text.c_str(), -1, defaultFont.get(), pt, &brush);
+            else if (c.type == Type::DrawText)
+            {
+                Gdiplus::SolidBrush brush(c.color);
+                Gdiplus::PointF pt((Gdiplus::REAL)c.x, (Gdiplus::REAL)c.y);
+                memGraphics->DrawString(c.text.c_str(), -1, &font, pt, &brush);
+            }
         }
     }
 
@@ -618,126 +417,30 @@ void GDI::flush(float /*dt*/)
 {
     if (!hwnd)
         return;
-
     HDC hdc = GetDC(hwnd);
     if (!hdc)
         return;
 
-    if (backPixels && backWidth > 0 && backHeight > 0)
+    if (backPixels)
     {
-        // 使用最快的位块传输方式
-        SetStretchBltMode(hdc, COLORONCOLOR);
-        StretchDIBits(
-            hdc,
-            0, 0, backWidth, backHeight,
-            0, 0, backWidth, backHeight,
-            backPixels,
-            &backInfo,
-            DIB_RGB_COLORS,
-            SRCCOPY);
-    }
-    else if (memBitmap)
-    {
-        Graphics g(hdc);
-        g.SetInterpolationMode(InterpolationModeLowQuality);
-        g.DrawImage(memBitmap.get(), 0, 0, memBitmap->GetWidth(), memBitmap->GetHeight());
+        BitBlt(hdc, 0, 0, backWidth, backHeight, hBackDC, 0, 0, SRCCOPY);
     }
 
     ReleaseDC(hwnd, hdc);
 }
 
-Bitmap *GDI::LoadBitmapFromRCDATA(int resId)
-{
-    auto it = bitmapCache.find(resId);
-    if (it != bitmapCache.end())
-        return it->second.get();
-
-    HMODULE hMod = GetModuleHandleW(NULL);
-    HRSRC hrs = FindResource(hMod, MAKEINTRESOURCE(resId), RT_RCDATA);
-    if (!hrs)
-        return nullptr;
-    HGLOBAL hRes = LoadResource(hMod, hrs);
-    if (!hRes)
-        return nullptr;
-    DWORD cb = SizeofResource(hMod, hrs);
-    void *p = LockResource(hRes);
-    if (!p || cb == 0)
-        return nullptr;
-
-    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, cb);
-    if (!hMem)
-        return nullptr;
-    void *dst = GlobalLock(hMem);
-    memcpy(dst, p, cb);
-    GlobalUnlock(hMem);
-
-    IStream *stream = nullptr;
-    if (CreateStreamOnHGlobal(hMem, TRUE, &stream) != S_OK)
-    {
-        GlobalFree(hMem);
-        return nullptr;
-    }
-
-    Bitmap *bmp = Bitmap::FromStream(stream);
-    stream->Release();
-    if (!bmp || bmp->GetLastStatus() != Ok)
-    {
-        delete bmp;
-        return nullptr;
-    }
-
-    // 尝试预加载到直接像素缓存
-    PreloadImageToCache(resId);
-
-    bitmapCache[resId] = std::unique_ptr<Bitmap>(bmp);
-    return bmp;
-}
-
-// backward-compatible wrappers
 void GDI::image(int resId, int x, int y, int w, int h, bool flip)
 {
-    // 预加载图像到缓存（如果尚未加载）
-    if (directImageCache.find(resId) == directImageCache.end())
-    {
-        PreloadImageToCache(resId);
-    }
-
-    // 如果需要镜像，预加载镜像版本
-    if (flip && flippedImageCache.find(-resId) == flippedImageCache.end())
-    {
-        PreloadFlippedImageToCache(resId);
-    }
-
     pushImage(resId, x, y, w, h, flip);
 }
 
 void GDI::imageEx(int resId, int x, int y, int w, int h,
                   bool flip, int srcX, int srcY, int srcW, int srcH)
 {
-    // 预加载图像到缓存（如果尚未加载）
-    if (directImageCache.find(resId) == directImageCache.end())
-    {
-        PreloadImageToCache(resId);
-    }
-
-    // 如果需要镜像，预加载镜像版本
-    if (flip && flippedImageCache.find(-resId) == flippedImageCache.end())
-    {
-        PreloadFlippedImageToCache(resId);
-    }
-
     pushImageEx(resId, x, y, w, h, flip, srcX, srcY, srcW, srcH);
 }
 
 void GDI::text(const std::wstring &txt, int x, int y, float size, Gdiplus::Color color)
 {
-    // 确保文本颜色不是黑色（如果背景是黑色）
-    // 修复：直接比较ARGB值而不是调用GetValue()
-    if (color.GetValue() == 0xFF000000) // 黑色
-    {
-        // 默认使用白色文本
-        color = Color(255, 255, 255);
-    }
-
     pushText(txt, x, y, size, color);
 }

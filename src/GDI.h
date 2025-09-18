@@ -5,6 +5,16 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <cstdint> // for uint32_t
+
+// 新增：直接像素访问的图像缓存结构
+struct CachedImage
+{
+    int width = 0;
+    int height = 0;
+    std::unique_ptr<uint32_t[]> pixels; // 预乘Alpha的BGRA格式
+    bool isOpaque = true;               // 优化：标记图像是否完全不透明
+};
 
 class GDI
 {
@@ -20,7 +30,7 @@ public:
 
     // 向后兼容接口（旧代码可能直接调用）
     static void image(int resId, int x, int y, int w, int h, bool flip = false);
-    static void text(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::Black);
+    static void text(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::White);
 
     // 新增扩展接口
     static void imageEx(int resId, int x, int y, int w, int h,
@@ -47,7 +57,7 @@ public:
         // DrawText params
         std::wstring text;
         float fontSize = 12.0f;
-        Gdiplus::Color color = Gdiplus::Color::Black;
+        Gdiplus::Color color = Gdiplus::Color::White;
 
         // constructors
         static Command MakeImage(int resId_, int x_, int y_, int w_, int h_, bool flip_ = false,
@@ -68,7 +78,7 @@ public:
             c.hasSrcRect = (srcW_ > 0 && srcH_ > 0);
             return c;
         }
-        static Command MakeText(const std::wstring &txt, int x_, int y_, float size_ = 12.0f, Gdiplus::Color color_ = Gdiplus::Color::Black)
+        static Command MakeText(const std::wstring &txt, int x_, int y_, float size_ = 12.0f, Gdiplus::Color color_ = Gdiplus::Color::White)
         {
             Command c;
             c.type = Type::DrawText;
@@ -81,6 +91,7 @@ public:
         }
     };
 
+private:
     // push commands (轻量接口)
     static void pushImage(int resId, int x, int y, int w, int h, bool flip = false)
     {
@@ -94,38 +105,37 @@ public:
         commands.emplace_back(Command::MakeImage(resId, x, y, w, h, flip, srcX, srcY, srcW, srcH));
     }
 
-    static void pushText(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::Black)
+    static void pushText(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::White)
     {
         commands.emplace_back(Command::MakeText(txt, x, y, size, color));
     }
 
-private:
     static HWND hwnd;
-
-    // GDI+ token
     static ULONG_PTR gdiplusToken;
 
     // DIBSection backing buffer
-    static void *backPixels; // pointer to pixel data (top-down BGRA/premult)
+    static uint32_t *backPixels; // 直接指向像素数据 (BGRA)
     static HBITMAP hBackBitmap;
+    static HDC hBackDC;
     static BITMAPINFO backInfo;
     static int backWidth;
     static int backHeight;
-    static int backStride;
 
-    // GDI+ objects that wrap the buffer
-    static std::unique_ptr<Gdiplus::Bitmap> memBitmap;     // wrapper around backPixels (zero-copy)
-    static std::unique_ptr<Gdiplus::Graphics> memGraphics; // draws into memBitmap
+    // GDI+ 仅用于加载和字体
+    static std::unique_ptr<Gdiplus::Graphics> memGraphics; // 用于GDI+回退模式
 
-    // caches
-    static std::unique_ptr<Gdiplus::Font> defaultFont;
-    static std::unordered_map<int, std::unique_ptr<Gdiplus::Bitmap>> bitmapCache;
+    // 缓存
+    static std::unordered_map<int, CachedImage> imageCache;
+    static std::unordered_map<float, HFONT> fontCache;
 
-    // lightweight command list
     static std::vector<Command> commands;
 
-    // helpers
+    // 辅助函数
     static bool createBackBuffer(int w, int h);
     static void destroyBackBuffer();
-    static Gdiplus::Bitmap *LoadBitmapFromRCDATA(int resId);
+    static CachedImage *loadImage(int resId);
+    static HFONT getFont(float size);
+
+    // 优化的绘制函数
+    static void drawImageFast(const Command &cmd);
 };
