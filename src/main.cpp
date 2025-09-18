@@ -1,7 +1,8 @@
 ﻿#include "PC.h"
 #include "GDI.h"
-#include "Audio.h"
+// #include "Audio.h"
 #include <chrono>
+#include "Audios.h"
 
 extern int GAME_WIDTH;
 extern int GAME_HEIGHT;
@@ -16,8 +17,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     pc.show();
 
     GDI::init(pc.window());
-
-    Audio_bg(301);
+    Audios::bg(301);
+    // Audio_bg(301);
 
     TimePoint prev_time = Clock::now();
 
@@ -49,13 +50,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
         GDI::text(fpsText, 10, 10);
 
-        GDI::imageEx(101, 64, 96, 64, 64, true, 576, 96, 64, 64);
-        GDI::imageEx(101, 140, 96, 64, 64, false, 576, 96, 64, 64);
+        GDI::image(101, 0, 0, 640, 160);
+        GDI::imageEx(201, 32, 96, 64, 64, true, 0, 0, 64, 64);
+        // GDI::imageEx(101, 140, 96, 64, 64, false, 576, 96, 64, 64);
 
         GDI::flush(dt);
     }
 
     GDI::end();
-    Audio_shutdown();
+    // Audio_shutdown();
     return 0;
 }

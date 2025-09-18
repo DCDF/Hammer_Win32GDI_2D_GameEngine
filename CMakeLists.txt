@@ -22,7 +22,14 @@ file(GLOB_RECURSE ALL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 # 可执行文件
 add_executable(${PROJECT_NAME} WIN32 ${ALL_SOURCES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Msimg32)
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+mfplat.lib
+mfreadwrite.lib
+mfuuid.lib
+shlwapi.lib
+xaudio2.lib
+ole32.lib
+)
 
 
 # 静态编译选项
