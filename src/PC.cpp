@@ -6,6 +6,7 @@ PC::PC(HINSTANCE hInstance, int width, int height, const char* title)
     wc.lpfnWndProc = WndProc;  // 直接关联静态成员函数
     wc.hInstance = hInstance;
     wc.lpszClassName = "PCWindowClass";
+    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(1));
     RegisterClass(&wc);
 
     RECT rc = {0, 0, width_, height_};
