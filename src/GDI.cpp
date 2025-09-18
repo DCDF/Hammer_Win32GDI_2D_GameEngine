@@ -1,28 +1,24 @@
 ﻿// ---------------------------------------------------------------------------
 // --- 预处理器和头文件包含顺序 ---
-// 这是解决编译错误的关键部分
 // ---------------------------------------------------------------------------
 
-// 1. 定义 NOMINMAX，防止 Windows.h 定义 min/max 宏，避免与 std::min/max 冲突。
 #define NOMINMAX
 
-// 2. 包含核心的 Windows 头文件和 C++ 标准库。
 #include <windows.h>
-#include <algorithm> // 包含 std::min 和 std::max
+#include <algorithm>
 #include <cmath>
-#include <shlwapi.h> // 包含 SHCreateMemStream
+#include <shlwapi.h>
+#include <unordered_map>
+#include <memory>
+#include <vector>
+#include <cstdint>
+#include <string>
 
-// 3. 为 GDI+ "手动" 提供它需要的 min 和 max。
-//    由于 NOMINMAX 已经生效，GDI+ 头文件找不到 min/max 宏。
-//    我们通过 using 声明，将 std::min 和 std::max 引入全局命名空间，
-//    这样 GDI+ 头文件就能找到它们了。
 using std::max;
 using std::min;
 
-// 4. 现在可以安全地包含我们自己的头文件，它会间接包含 GDI+ 头文件。
 #include "GDI.h"
 
-// 5. 链接必要的库
 #pragma comment(lib, "Gdiplus.lib")
 #pragma comment(lib, "Msimg32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -38,7 +34,7 @@ HDC GDI::hBackDC = nullptr;
 BITMAPINFO GDI::backInfo = {};
 int GDI::backWidth = 0;
 int GDI::backHeight = 0;
-std::unique_ptr<Gdiplus::Graphics> GDI::memGraphics = nullptr;
+// removed memGraphics as per your request
 std::unordered_map<int, CachedImage> GDI::imageCache;
 std::unordered_map<float, HFONT> GDI::fontCache;
 std::vector<GDI::Command> GDI::commands;
@@ -56,19 +52,24 @@ namespace
         if (src_a == 0)
             return dest;
 
-        uint32_t inv_a = 256 - src_a;
+        // faster integer math, keep 8-bit channel values
+        uint32_t inv_a = 255 - src_a;
+        uint32_t src_rb = src & 0x00FF00FF;
+        uint32_t src_g = src & 0x0000FF00;
         uint32_t dest_rb = dest & 0x00FF00FF;
         uint32_t dest_g = dest & 0x0000FF00;
-        dest_rb = (dest_rb * inv_a) >> 8;
-        dest_g = (dest_g * inv_a) >> 8;
-        dest_rb &= 0x00FF00FF;
-        dest_g &= 0x0000FF00;
-        return src + dest_rb + dest_g;
+
+        uint32_t out_rb = ((src_rb * src_a) + (dest_rb * inv_a)) / 255;
+        uint32_t out_g = ((src_g * src_a) + (dest_g * inv_a)) / 255;
+
+        out_rb &= 0x00FF00FF;
+        out_g &= 0x0000FF00;
+        return (src & 0xFF000000) | out_rb | (out_g & 0x00FF0000) | (out_g & 0x0000FF00);
     }
 }
 
 // ---------------------------------------------------------------------------
-// --- GDI 类成员函数实现 ---
+// --- GDI 类成员函数实现 （已移除备用 Gdiplus memGraphics 分支）---
 // ---------------------------------------------------------------------------
 
 bool GDI::createBackBuffer(int w, int h)
@@ -83,7 +84,7 @@ bool GDI::createBackBuffer(int w, int h)
     ZeroMemory(&backInfo, sizeof(backInfo));
     backInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     backInfo.bmiHeader.biWidth = w;
-    backInfo.bmiHeader.biHeight = -h;
+    backInfo.bmiHeader.biHeight = -h; // top-down
     backInfo.bmiHeader.biPlanes = 1;
     backInfo.bmiHeader.biBitCount = 32;
     backInfo.bmiHeader.biCompression = BI_RGB;
@@ -93,6 +94,7 @@ bool GDI::createBackBuffer(int w, int h)
     if (!hBackBitmap)
     {
         ReleaseDC(hwnd, hdc);
+        backPixels = nullptr;
         return false;
     }
 
@@ -101,7 +103,6 @@ bool GDI::createBackBuffer(int w, int h)
     ReleaseDC(hwnd, hdc);
 
     SetBkMode(hBackDC, TRANSPARENT);
-
     return true;
 }
 
@@ -129,19 +130,17 @@ void GDI::init(HWND h)
 
     RECT rc;
     GetClientRect(hwnd, &rc);
-    if (!createBackBuffer(rc.right - rc.left, rc.bottom - rc.top))
-    {
-        memGraphics = std::make_unique<Gdiplus::Graphics>(h);
-    }
+    createBackBuffer(rc.right - rc.left, rc.bottom - rc.top);
+    // no fallback to memGraphics per request
 
     commands.reserve(1024);
 }
 
 void GDI::end()
 {
-    for (auto const &[key, val] : fontCache)
+    for (auto const &p : fontCache)
     {
-        DeleteObject(val);
+        DeleteObject(p.second);
     }
     fontCache.clear();
 
@@ -149,7 +148,6 @@ void GDI::end()
     commands.clear();
     destroyBackBuffer();
 
-    memGraphics.reset();
     if (gdiplusToken)
     {
         Gdiplus::GdiplusShutdown(gdiplusToken);
@@ -161,12 +159,8 @@ void GDI::begin(float /*dt*/)
 {
     if (backPixels)
     {
-        memset(backPixels, 0, backWidth * backHeight * 4);
-    }
-    else if (memGraphics)
-    {
-        Gdiplus::Color bg(0, 0, 0, 0);
-        memGraphics->Clear(bg);
+        // faster zeroing: use memset (already used), but size in bytes:
+        memset(backPixels, 0, (size_t)backWidth * (size_t)backHeight * 4);
     }
 }
 
@@ -174,9 +168,7 @@ CachedImage *GDI::loadImage(int resId)
 {
     auto it = imageCache.find(resId);
     if (it != imageCache.end())
-    {
         return &it->second;
-    }
 
     HMODULE hMod = GetModuleHandleW(NULL);
     HRSRC hResInfo = FindResource(hMod, MAKEINTRESOURCE(resId), RT_RCDATA);
@@ -200,9 +192,7 @@ CachedImage *GDI::loadImage(int resId)
     pStream->Release();
 
     if (!bmp || bmp->GetLastStatus() != Gdiplus::Ok)
-    {
         return nullptr;
-    }
 
     int width = bmp->GetWidth();
     int height = bmp->GetHeight();
@@ -221,13 +211,12 @@ CachedImage *GDI::loadImage(int resId)
     }
 
     uint32_t *srcPixels = (uint32_t *)bmpData.Scan0;
-    for (int i = 0; i < width * height; ++i)
+    const int pixelCount = width * height;
+    for (int i = 0; i < pixelCount; ++i)
     {
-        uint8_t alpha = srcPixels[i] >> 24;
+        uint8_t alpha = (uint8_t)(srcPixels[i] >> 24);
         if (alpha < 255)
-        {
             cached.isOpaque = false;
-        }
         cached.pixels[i] = srcPixels[i];
     }
 
@@ -241,9 +230,7 @@ HFONT GDI::getFont(float size)
 {
     auto it = fontCache.find(size);
     if (it != fontCache.end())
-    {
         return it->second;
-    }
 
     LOGFONTW lf = {0};
     lf.lfHeight = -lround(size);
@@ -255,18 +242,23 @@ HFONT GDI::getFont(float size)
     return hf;
 }
 
+// Highly-optimized blit for the main path (backPixels != nullptr)
+// Minimized per-pixel overhead, pointer-based loops, fewer divisions.
 void GDI::drawImageFast(const Command &cmd)
 {
     CachedImage *img = loadImage(cmd.resId);
     if (!img)
         return;
 
-    int srcW = cmd.hasSrcRect ? cmd.srcW : img->width;
-    int srcH = cmd.hasSrcRect ? cmd.srcH : img->height;
+    const int imgW = img->width;
+    const int imgH = img->height;
+
+    int srcW = cmd.hasSrcRect ? cmd.srcW : imgW;
+    int srcH = cmd.hasSrcRect ? cmd.srcH : imgH;
     int srcX = cmd.hasSrcRect ? cmd.srcX : 0;
     int srcY = cmd.hasSrcRect ? cmd.srcY : 0;
 
-    if (srcW <= 0 || srcH <= 0)
+    if (srcW <= 0 || srcH <= 0 || cmd.w <= 0 || cmd.h <= 0)
         return;
 
     int destX1 = cmd.x;
@@ -274,32 +266,40 @@ void GDI::drawImageFast(const Command &cmd)
     int destX2 = cmd.x + cmd.w;
     int destY2 = cmd.y + cmd.h;
 
-    // NOMINMAX 已定义，可以直接使用 std::min/max，无需括号
-    int clipX1 = std::max(0, destX1);
-    int clipY1 = std::max(0, destY1);
-    int clipX2 = std::min(backWidth, destX2);
-    int clipY2 = std::min(backHeight, destY2);
+    int clipX1 = max(0, destX1);
+    int clipY1 = max(0, destY1);
+    int clipX2 = min(backWidth, destX2);
+    int clipY2 = min(backHeight, destY2);
 
     if (clipX1 >= clipX2 || clipY1 >= clipY2)
         return;
 
     const int FRACT_BITS = 16;
-    const int FRACT_UNIT = 1 << FRACT_BITS;
+    const uint32_t FRACT_UNIT = 1u << FRACT_BITS;
 
-    uint64_t stepX_fixed = (uint64_t)srcW * FRACT_UNIT / cmd.w;
-    uint64_t stepY_fixed = (uint64_t)srcH * FRACT_UNIT / cmd.h;
+    // fixed-point step
+    uint64_t stepX_fixed = ((uint64_t)srcW * FRACT_UNIT) / (uint64_t)cmd.w;
+    uint64_t stepY_fixed = ((uint64_t)srcH * FRACT_UNIT) / (uint64_t)cmd.h;
 
     uint64_t srcX_fixed_start = (uint64_t)(clipX1 - destX1) * stepX_fixed;
     uint64_t srcY_fixed_start = (uint64_t)(clipY1 - destY1) * stepY_fixed;
 
-    uint32_t *pDestRow = backPixels + clipY1 * backWidth + clipX1;
+    // start row pointer in dest
+    uint32_t *destRow = backPixels + (clipY1 * backWidth) + clipX1;
     uint64_t srcY_fixed = srcY_fixed_start;
 
     for (int y = clipY1; y < clipY2; ++y)
     {
-        int current_srcY = srcY + static_cast<int>(srcY_fixed >> FRACT_BITS);
-        const uint32_t *pSrcRow = img->pixels.get() + current_srcY * img->width;
+        int current_srcY = srcY + (int)(srcY_fixed >> FRACT_BITS);
+        if (current_srcY < 0)
+            current_srcY = 0;
+        if (current_srcY >= imgH)
+            current_srcY = imgH - 1;
+
+        const uint32_t *srcRowBase = img->pixels.get() + (size_t)current_srcY * (size_t)imgW;
+
         uint64_t srcX_fixed = srcX_fixed_start;
+        uint32_t *destPtr = destRow;
 
         if (cmd.flip)
         {
@@ -307,8 +307,13 @@ void GDI::drawImageFast(const Command &cmd)
             {
                 for (int x = clipX1; x < clipX2; ++x)
                 {
-                    int current_srcX = srcX + srcW - 1 - static_cast<int>(srcX_fixed >> FRACT_BITS);
-                    pDestRow[x - clipX1] = pSrcRow[current_srcX];
+                    int sx = srcX + srcW - 1 - (int)(srcX_fixed >> FRACT_BITS);
+                    // bound check (cheap)
+                    if (sx < 0)
+                        sx = 0;
+                    if (sx >= imgW)
+                        sx = imgW - 1;
+                    *destPtr++ = srcRowBase[sx];
                     srcX_fixed += stepX_fixed;
                 }
             }
@@ -316,9 +321,14 @@ void GDI::drawImageFast(const Command &cmd)
             {
                 for (int x = clipX1; x < clipX2; ++x)
                 {
-                    int current_srcX = srcX + srcW - 1 - static_cast<int>(srcX_fixed >> FRACT_BITS);
-                    uint32_t srcPixel = pSrcRow[current_srcX];
-                    pDestRow[x - clipX1] = AlphaBlendPixel_32bpp(pDestRow[x - clipX1], srcPixel);
+                    int sx = srcX + srcW - 1 - (int)(srcX_fixed >> FRACT_BITS);
+                    if (sx < 0)
+                        sx = 0;
+                    if (sx >= imgW)
+                        sx = imgW - 1;
+                    uint32_t srcPixel = srcRowBase[sx];
+                    *destPtr = AlphaBlendPixel_32bpp(*destPtr, srcPixel);
+                    ++destPtr;
                     srcX_fixed += stepX_fixed;
                 }
             }
@@ -327,16 +337,27 @@ void GDI::drawImageFast(const Command &cmd)
         {
             if (img->isOpaque)
             {
-                if (cmd.w == srcW && cmd.h == srcH)
+                // fast path: if there's no scaling in X and srcX_fixed aligns to integer, do memcpy
+                if ((cmd.w == srcW) && (cmd.h == srcH) && ((srcX_fixed_start & (FRACT_UNIT - 1)) == 0))
                 {
-                    memcpy(pDestRow, pSrcRow + srcX + static_cast<int>(srcX_fixed_start >> FRACT_BITS), (clipX2 - clipX1) * 4);
+                    int srcStart = srcX + (int)(srcX_fixed_start >> FRACT_BITS);
+                    if (srcStart < 0)
+                        srcStart = 0;
+                    if (srcStart + (clipX2 - clipX1) > imgW)
+                        srcStart = imgW - (clipX2 - clipX1);
+                    const void *srcBytes = srcRowBase + srcStart;
+                    memcpy(destPtr, srcBytes, (size_t)(clipX2 - clipX1) * 4);
                 }
                 else
                 {
                     for (int x = clipX1; x < clipX2; ++x)
                     {
-                        int current_srcX = srcX + static_cast<int>(srcX_fixed >> FRACT_BITS);
-                        pDestRow[x - clipX1] = pSrcRow[current_srcX];
+                        int sx = srcX + (int)(srcX_fixed >> FRACT_BITS);
+                        if (sx < 0)
+                            sx = 0;
+                        if (sx >= imgW)
+                            sx = imgW - 1;
+                        *destPtr++ = srcRowBase[sx];
                         srcX_fixed += stepX_fixed;
                     }
                 }
@@ -345,69 +366,82 @@ void GDI::drawImageFast(const Command &cmd)
             {
                 for (int x = clipX1; x < clipX2; ++x)
                 {
-                    int current_srcX = srcX + static_cast<int>(srcX_fixed >> FRACT_BITS);
-                    uint32_t srcPixel = pSrcRow[current_srcX];
-                    pDestRow[x - clipX1] = AlphaBlendPixel_32bpp(pDestRow[x - clipX1], srcPixel);
+                    int sx = srcX + (int)(srcX_fixed >> FRACT_BITS);
+                    if (sx < 0)
+                        sx = 0;
+                    if (sx >= imgW)
+                        sx = imgW - 1;
+                    uint32_t srcPixel = srcRowBase[sx];
+                    *destPtr = AlphaBlendPixel_32bpp(*destPtr, srcPixel);
+                    ++destPtr;
                     srcX_fixed += stepX_fixed;
                 }
             }
         }
-        pDestRow += backWidth;
+
+        // next dest row
+        destRow += backWidth;
         srcY_fixed += stepY_fixed;
     }
 }
 
 void GDI::tick(float /*dt*/)
 {
-    if (backPixels)
+    if (!backPixels) // no backbuffer -> nothing to do (no memGraphics fallback)
     {
-        for (const auto &c : commands)
+        commands.clear();
+        return;
+    }
+
+    // 1) Draw images (hot path) - iterate once
+    for (const auto &c : commands)
+    {
+        if (c.type == Type::DrawImage)
         {
-            if (c.type == Type::DrawImage)
-            {
-                drawImageFast(c);
-            }
-        }
-        for (const auto &c : commands)
-        {
-            if (c.type == Type::DrawText)
-            {
-                HFONT hf = getFont(c.fontSize);
-                SelectObject(hBackDC, hf);
-                Gdiplus::Color gdiColor = c.color;
-                SetTextColor(hBackDC, RGB(gdiColor.GetR(), gdiColor.GetG(), gdiColor.GetB()));
-                TextOutW(hBackDC, c.x, c.y, c.text.c_str(), (int)c.text.length());
-            }
+            drawImageFast(c);
         }
     }
-    else if (memGraphics)
+
+    // 2) Draw text - minimize SelectObject / SetTextColor calls
+    HFONT lastFont = nullptr;
+    COLORREF lastColor = 0xFFFFFFFF; // impossible initial value
+    HFONT prevFont = nullptr;
+    if (hBackDC)
     {
-        Gdiplus::Font font(L"Arial", 12.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
-        for (const auto &c : commands)
+        prevFont = (HFONT)GetCurrentObject(hBackDC, OBJ_FONT);
+    }
+
+    for (const auto &c : commands)
+    {
+        if (c.type != Type::DrawText)
+            continue;
+
+        HFONT hf = getFont(c.fontSize);
+        if (hf != lastFont)
         {
-            if (c.type == Type::DrawImage)
-            {
-                CachedImage *imgData = loadImage(c.resId);
-                if (imgData)
-                {
-                    Gdiplus::Bitmap bmp(imgData->width, imgData->height, imgData->width * 4, PixelFormat32bppPARGB, (BYTE *)imgData->pixels.get());
-                    if (c.hasSrcRect)
-                    {
-                        memGraphics->DrawImage(&bmp, Gdiplus::Rect(c.x, c.y, c.w, c.h), c.srcX, c.srcY, c.srcW, c.srcH, Gdiplus::UnitPixel);
-                    }
-                    else
-                    {
-                        memGraphics->DrawImage(&bmp, c.x, c.y, c.w, c.h);
-                    }
-                }
-            }
-            else if (c.type == Type::DrawText)
-            {
-                Gdiplus::SolidBrush brush(c.color);
-                Gdiplus::PointF pt((Gdiplus::REAL)c.x, (Gdiplus::REAL)c.y);
-                memGraphics->DrawString(c.text.c_str(), -1, &font, pt, &brush);
-            }
+            SelectObject(hBackDC, hf);
+            lastFont = hf;
         }
+
+        // prepare color as COLORREF
+        Gdiplus::Color gc = c.color;
+        COLORREF col = RGB(gc.GetR(), gc.GetG(), gc.GetB());
+        if (col != lastColor)
+        {
+            SetTextColor(hBackDC, col);
+            lastColor = col;
+        }
+
+        // use ExtTextOutW for slightly better control (no background since we set TRANSPARENT earlier)
+        const wchar_t *textPtr = c.text.c_str();
+        int len = (int)c.text.length();
+        ExtTextOutW(hBackDC, c.x, c.y, 0, nullptr, textPtr, len, nullptr);
+    }
+
+    // restore previous font if needed
+    if (hBackDC && prevFont)
+    {
+        SelectObject(hBackDC, prevFont);
     }
 
     commands.clear();
@@ -421,7 +455,7 @@ void GDI::flush(float /*dt*/)
     if (!hdc)
         return;
 
-    if (backPixels)
+    if (backPixels && hBackDC)
     {
         BitBlt(hdc, 0, 0, backWidth, backHeight, hBackDC, 0, 0, SRCCOPY);
     }
