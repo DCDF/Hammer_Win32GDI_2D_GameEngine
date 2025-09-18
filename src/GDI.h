@@ -20,7 +20,7 @@ public:
 
     // 向后兼容接口（旧代码可能直接调用）
     static void image(int resId, int x, int y, int w, int h, bool flip = false);
-    static void text(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::Black);
+    static void text(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::White);
 
     // 轻量命令类型（避免 std::function 分配）
     enum class Type : uint8_t
@@ -54,7 +54,7 @@ public:
             c.flip = flip_;
             return c;
         }
-        static Command MakeText(const std::wstring &txt, int x_, int y_, float size_ = 12.0f, Gdiplus::Color color_ = Gdiplus::Color::Black)
+        static Command MakeText(const std::wstring &txt, int x_, int y_, float size_ = 12.0f, Gdiplus::Color color_ = Gdiplus::Color::White)
         {
             Command c;
             c.type = Type::DrawText;

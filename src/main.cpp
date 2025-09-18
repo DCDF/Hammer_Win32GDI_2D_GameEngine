@@ -51,6 +51,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
         GDI::text(fpsText, 10, 10);
         GDI::image(101, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+        GDI::image(101, 0, 0, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+        GDI::image(101, GAME_WIDTH / 2, 0, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+        GDI::image(101, GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH / 2, GAME_HEIGHT / 2);
 
         GDI::flush(dt);
     }
