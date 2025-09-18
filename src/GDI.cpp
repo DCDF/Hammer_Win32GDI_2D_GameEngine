@@ -153,23 +153,58 @@ void GDI::begin(float /*dt*/)
 {
     if (!memGraphics && backPixels)
     {
-        // 使用DIBSection时，直接清空内存
+        // 使用DIBSection时，直接清空内存为透明
         uint32_t *pixels = static_cast<uint32_t *>(backPixels);
         const int totalPixels = backHeight * (backStride / 4);
         for (int i = 0; i < totalPixels; ++i)
         {
-            pixels[i] = 0xFF000000; // 黑色背景
+            pixels[i] = 0x00000000; // 透明背景 (ARGB: 0,0,0,0)
         }
     }
     else if (memGraphics)
     {
         // 使用GDI+时，使用Clear
-        Color bg(0, 0, 0, 0);
+        Color bg(0, 0, 0, 0); // 完全透明
         memGraphics->Clear(bg);
     }
 }
 
-// 高性能的图像绘制函数 - 无缩放无裁剪的快速路径
+// 正确的预乘 Alpha 混合函数
+static inline uint32_t AlphaBlend(uint32_t dest, uint32_t src)
+{
+    // 提取源像素的 Alpha 通道
+    uint8_t alpha = (src >> 24) & 0xFF;
+
+    // 如果完全透明，直接返回目标
+    if (alpha == 0)
+        return dest;
+
+    // 如果完全不透明，直接返回源
+    if (alpha == 255)
+        return src;
+
+    // 提取源和目标颜色分量（注意：源是预乘的）
+    uint8_t src_r = (src >> 16) & 0xFF;
+    uint8_t src_g = (src >> 8) & 0xFF;
+    uint8_t src_b = src & 0xFF;
+
+    uint8_t dest_r = (dest >> 16) & 0xFF;
+    uint8_t dest_g = (dest >> 8) & 0xFF;
+    uint8_t dest_b = dest & 0xFF;
+
+    // 计算逆 Alpha 值
+    uint8_t inv_alpha = 255 - alpha;
+
+    // 对于预乘 Alpha 图像，混合公式是：result = src + dest * (1 - alpha)
+    uint8_t out_r = src_r + (dest_r * inv_alpha) / 255;
+    uint8_t out_g = src_g + (dest_g * inv_alpha) / 255;
+    uint8_t out_b = src_b + (dest_b * inv_alpha) / 255;
+
+    // 组合结果（保持目标 Alpha 不变）
+    return (dest & 0xFF000000) | (out_r << 16) | (out_g << 8) | out_b;
+}
+
+// 修复DrawImageFast函数
 static void DrawImageFast(uint32_t *destPixels, int destWidth, int destHeight, int destStride,
                           const uint32_t *srcPixels, int srcWidth, int srcHeight,
                           int destX, int destY, int destW, int destH, bool flip)
@@ -186,30 +221,44 @@ static void DrawImageFast(uint32_t *destPixels, int destWidth, int destHeight, i
     // 逐行复制像素
     for (int y = startY; y < endY; ++y)
     {
+        // 计算源图像Y坐标
+        int srcYPos = y - destY;
+        if (srcYPos < 0 || srcYPos >= srcHeight)
+            continue;
+
         if (flip)
         {
             // 水平翻转：从右向左复制
-            const uint32_t *srcRow = srcPixels + y * srcWidth + (srcWidth - 1 - (startX - destX));
+            const uint32_t *srcRow = srcPixels + srcYPos * srcWidth;
             uint32_t *destRow = destPixels + y * (destStride / 4) + startX;
 
             for (int x = startX; x < endX; ++x)
             {
-                *destRow++ = *srcRow--;
+                int srcXPos = srcWidth - 1 - (x - destX);
+                if (srcXPos >= 0 && srcXPos < srcWidth)
+                {
+                    *destRow = AlphaBlend(*destRow, srcRow[srcXPos]);
+                }
+                destRow++;
             }
         }
         else
         {
             // 正常复制：从左向右复制
-            const uint32_t *srcRow = srcPixels + y * srcWidth + (startX - destX);
+            const uint32_t *srcRow = srcPixels + srcYPos * srcWidth + (startX - destX);
             uint32_t *destRow = destPixels + y * (destStride / 4) + startX;
 
             int copyWidth = endX - startX;
-            std::copy(srcRow, srcRow + copyWidth, destRow);
+            for (int i = 0; i < copyWidth; i++)
+            {
+                *destRow = AlphaBlend(*destRow, srcRow[i]);
+                destRow++;
+            }
         }
     }
 }
 
-// 支持裁剪的图像绘制函数 - 较慢但功能更全
+// 修复DrawImageWithCrop函数
 static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeight, int destStride,
                               const uint32_t *srcPixels, int srcWidth, int srcHeight,
                               int destX, int destY, int destW, int destH,
@@ -263,7 +312,7 @@ static void DrawImageWithCrop(uint32_t *destPixels, int destWidth, int destHeigh
             if (srcXPos >= 0 && srcXPos < srcWidth && srcYPos >= 0 && srcYPos < srcHeight)
             {
                 // 复制像素
-                *destRow = srcPixels[srcYPos * srcWidth + srcXPos];
+                *destRow = AlphaBlend(*destRow, srcPixels[srcYPos * srcWidth + srcXPos]);
             }
 
             destRow++;
@@ -327,6 +376,7 @@ static bool PreloadImageToCache(int resId)
     BitmapData bmpData;
     Rect rect(0, 0, width, height);
 
+    // 确保使用 PARGB 格式
     if (bmp->LockBits(&rect, ImageLockModeRead, PixelFormat32bppPARGB, &bmpData) == Ok)
     {
         uint32_t *srcPixels = static_cast<uint32_t *>(bmpData.Scan0);
@@ -397,7 +447,7 @@ void GDI::tick(float /*dt*/)
         {
             if (c.type == Type::DrawImage)
             {
-                // 检查是否有直接像素访问的缓存
+                // 在tick函数中，处理镜像图像
                 if (c.flip)
                 {
                     // 检查镜像缓存
@@ -409,7 +459,7 @@ void GDI::tick(float /*dt*/)
                         // 使用快速路径（无裁剪）
                         DrawImageFast(destPixels, backWidth, backHeight, backStride,
                                       cached.pixels.get(), cached.width, cached.height,
-                                      c.x, c.y, c.w, c.h, false);
+                                      c.x, c.y, c.w, c.h, false); // 注意：这里传递false，因为图像已经预翻转了
                         continue;
                     }
                 }
