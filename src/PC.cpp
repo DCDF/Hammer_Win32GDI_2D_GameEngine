@@ -1,9 +1,11 @@
 ﻿#include "PC.h"
+#include "Input.h"
 
-PC::PC(HINSTANCE hInstance, int width, int height, const char* title)
-    : hwnd_(nullptr), width_(width), height_(height) {
+PC::PC(HINSTANCE hInstance, int width, int height, const char *title)
+    : hwnd_(nullptr), width_(width), height_(height)
+{
     WNDCLASS wc = {};
-    wc.lpfnWndProc = WndProc;  // 直接关联静态成员函数
+    wc.lpfnWndProc = WndProc; // 直接关联静态成员函数
     wc.hInstance = hInstance;
     wc.lpszClassName = "PCWindowClass";
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(1));
@@ -15,23 +17,30 @@ PC::PC(HINSTANCE hInstance, int width, int height, const char* title)
     int winHeight = rc.bottom - rc.top;
 
     hwnd_ = CreateWindowEx(0, "PCWindowClass", title,
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-        winWidth, winHeight, nullptr, nullptr, hInstance, nullptr);
+                           WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT,
+                           winWidth, winHeight, nullptr, nullptr, hInstance, nullptr);
 }
 
-PC::~PC() {
-    if (hwnd_) DestroyWindow(hwnd_);
+PC::~PC()
+{
+    if (hwnd_)
+        DestroyWindow(hwnd_);
 }
 
-void PC::show() {
+void PC::show()
+{
     ShowWindow(hwnd_, SW_SHOW);
     UpdateWindow(hwnd_);
 }
 
-bool PC::tick() {
+bool PC::tick()
+{
     MSG msg;
-    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-        if (msg.message == WM_QUIT) return false;
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    {
+        if (msg.message == WM_QUIT)
+            return false;
+        Input::ProcessMessage(msg.message, msg.wParam, msg.lParam);
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -39,8 +48,10 @@ bool PC::tick() {
 }
 
 // 静态窗口过程
-LRESULT CALLBACK PC::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
+LRESULT CALLBACK PC::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg)
+    {
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;

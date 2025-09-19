@@ -2,10 +2,16 @@
 #include "GDI.h"
 // #include "Audio.h"
 #include <chrono>
-#include "Audios.h"
+#include "Camera.h"
+#include "Scene.h"
+#include "scene/GameScene.hpp"
+#include "Input.h"
 
 extern int GAME_WIDTH;
 extern int GAME_HEIGHT;
+extern int GAME_LINE;
+extern int GAME_OFFSET_X;
+extern int GAME_OFFSET_Y;
 
 // 使用 steady_clock（单调时钟，不受系统时间调整影响）
 using Clock = std::chrono::high_resolution_clock; // 或 steady_clock
@@ -16,8 +22,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     PC pc(hInstance, GAME_WIDTH, GAME_HEIGHT, "Hammer");
     pc.show();
 
+    Input::Initialize(pc.window());
     GDI::init(pc.window());
-    Audios::bg(301);
     // Audio_bg(301);
 
     TimePoint prev_time = Clock::now();
@@ -27,6 +33,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     float secondsFps = 1.0;
     bool running = true;
     std::wstring fpsText = L"0";
+    Scene::change(std::make_unique<GameScene>());
     while (running)
     {
         if (!pc.tick())
@@ -45,23 +52,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
             fps = tickCount;
             tickCount = 0;
         }
+        Input::Update();
+        Scene::curScene->tick(dt);
         GDI::begin(dt);
+        GAME_OFFSET_X = Camera::getOffsetX();
+        GAME_OFFSET_Y = Camera::getOffsetY();
+        GDI::setCamera(GAME_OFFSET_X, GAME_OFFSET_Y);
+        Scene::curScene->render();
         GDI::tick(dt);
 
-        GDI::setCamera(-320, 0);
-
         GDI::text(fpsText, 10, 10);
-
-        GDI::image(101, 0, 0, 640, 160);
-        int next = 1;
-        GDI::imageEx(201, 0, 96, 64, 64, true, 0, 0, 64, 64);
-        GDI::imageEx(201, 0, 32, 64, 64, false, 0, 0, 64, 64);
-        // GDI::imageEx(101, 140, 96, 64, 64, false, 576, 96, 64, 64);
-
         GDI::flush(dt);
     }
 
     GDI::end();
-    // Audio_shutdown();
+    Input::Shutdown();
     return 0;
 }
