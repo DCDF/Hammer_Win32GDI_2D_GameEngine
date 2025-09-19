@@ -20,6 +20,7 @@ class GameScene : public Scene
 protected:
     std::unique_ptr<Role> role;
     std::unique_ptr<Role> shuiyue;
+    int floorX = 0;
 
 public:
     void beforeEnter() override
@@ -49,8 +50,24 @@ public:
 
     void render() override
     {
+        if (GAME_OFFSET_X > floorX)
+        {
+            if (GAME_OFFSET_X > floorX + GAME_WIDTH)
+            {
+                floorX += GAME_WIDTH;
+            }
+            GDI::image(101, floorX + GAME_WIDTH, 0, GAME_WIDTH, GAME_HEIGHT);
+        }
 
-        GDI::image(101, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+        if (GAME_OFFSET_X < floorX)
+        {
+            if (GAME_OFFSET_X < floorX - GAME_WIDTH)
+            {
+                floorX -= GAME_WIDTH;
+            }
+            GDI::image(101, floorX - GAME_WIDTH, 0, GAME_WIDTH, GAME_HEIGHT);
+        }
+        GDI::image(101, floorX, 0, GAME_WIDTH, GAME_HEIGHT);
         role->render();
     }
 

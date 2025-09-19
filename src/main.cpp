@@ -60,8 +60,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::setCamera(GAME_OFFSET_X, GAME_OFFSET_Y);
         Scene::curScene->render();
         GDI::tick(dt);
-
-        GDI::text(fpsText, 10, 10);
+        
+        GDI::setCamera(0, 0);
+        Scene::curScene->renderGlobal();
+        GDI::text(fpsText,  10, 10);
         GDI::flush(dt);
     }
 
