@@ -23,19 +23,18 @@ file(GLOB_RECURSE ALL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 add_executable(${PROJECT_NAME} WIN32 ${ALL_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-mfplat.lib
-mfreadwrite.lib
-mfuuid.lib
-shlwapi.lib
-xaudio2.lib
-ole32.lib
+    mfplat.lib
+    mfreadwrite.lib
+    mfuuid.lib
+    shlwapi.lib
+    xaudio2.lib
+    ole32.lib
 )
 
 
-# 静态编译选项
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:/W3 /MTd /Zi /EHsc /utf-8>
-    $<$<CONFIG:Release>:/O2 /Ob2 /Oi /GL /Gw /fp:fast /DNDEBUG /MT /EHsc /utf-8>
+    $<$<CONFIG:Release>:/Os /Ob1 /Oi /GL /Gw /fp:fast /DNDEBUG /MT /EHsc /utf-8>  # 将/O2改为/Os，/Ob2改为/Ob1
 )
 target_link_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Release>:/LTCG /INCREMENTAL:NO /OPT:REF /OPT:ICF>
