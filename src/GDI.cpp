@@ -38,7 +38,9 @@ int GDI::backHeight = 0;
 std::unordered_map<int, CachedImage> GDI::imageCache;
 std::unordered_map<float, HFONT> GDI::fontCache;
 std::vector<GDI::Command> GDI::commands;
-
+// In GDI.cpp, with other static member initializations
+int GDI::cameraX = 0;
+int GDI::cameraY = 0;
 // ---------------------------------------------------------------------------
 // --- 内部辅助函数 ---
 // ---------------------------------------------------------------------------
@@ -135,7 +137,12 @@ void GDI::init(HWND h)
 
     commands.reserve(1024);
 }
-
+// In GDI.cpp
+void GDI::setCamera(int x, int y)
+{
+    cameraX = x;
+    cameraY = y;
+}
 void GDI::end()
 {
     for (auto const &p : fontCache)

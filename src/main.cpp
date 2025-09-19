@@ -48,32 +48,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::begin(dt);
         GDI::tick(dt);
 
+        GDI::setCamera(-320, 0);
+
         GDI::text(fpsText, 10, 10);
 
         GDI::image(101, 0, 0, 640, 160);
         int next = 1;
-        GDI::imageEx(201, 32, 96, 64, 64, true, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
-        GDI::imageEx(201, next++ * 64, 96, 64, 64, false, 0, 0, 64, 64);
+        GDI::imageEx(201, 0, 96, 64, 64, true, 0, 0, 64, 64);
+        GDI::imageEx(201, 0, 32, 64, 64, false, 0, 0, 64, 64);
         // GDI::imageEx(101, 140, 96, 64, 64, false, 576, 96, 64, 64);
 
         GDI::flush(dt);

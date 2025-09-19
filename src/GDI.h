@@ -90,24 +90,25 @@ public:
             return c;
         }
     };
+    static void setCamera(int x, int y);
 
 private:
     // push commands (轻量接口)
     static void pushImage(int resId, int x, int y, int w, int h, bool flip = false)
     {
-        commands.emplace_back(Command::MakeImage(resId, x, y, w, h, flip));
+        commands.emplace_back(Command::MakeImage(resId, x - cameraX, y - cameraY, w, h, flip));
     }
 
     // 新增扩展push命令
     static void pushImageEx(int resId, int x, int y, int w, int h,
                             bool flip, int srcX, int srcY, int srcW, int srcH)
     {
-        commands.emplace_back(Command::MakeImage(resId, x, y, w, h, flip, srcX, srcY, srcW, srcH));
+        commands.emplace_back(Command::MakeImage(resId, x - cameraX, y - cameraY, w, h, flip, srcX, srcY, srcW, srcH));
     }
 
     static void pushText(const std::wstring &txt, int x, int y, float size = 12.0f, Gdiplus::Color color = Gdiplus::Color::White)
     {
-        commands.emplace_back(Command::MakeText(txt, x, y, size, color));
+        commands.emplace_back(Command::MakeText(txt, x - cameraX, y - cameraY, size, color));
     }
 
     static HWND hwnd;
@@ -138,4 +139,7 @@ private:
 
     // 优化的绘制函数
     static void drawImageFast(const Command &cmd);
+
+    static int cameraX; // 相机视口的X偏移
+    static int cameraY; // 相机视口的Y偏移
 };
