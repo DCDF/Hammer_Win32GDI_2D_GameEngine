@@ -15,6 +15,14 @@
                 "y": 168.24506407083544
             }
         },
+        "地图1.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 456.6666666666667,
+                "y": 118.66666666666663
+            }
+        },
         "场景1.tmx": {
             "scale": 1,
             "selectedLayer": 0,
@@ -23,10 +31,36 @@
                 "y": 225
             }
         },
+        "女仆_1.tsx": {
+            "dynamicWrapping": false
+        },
+        "战斗女仆地图.tmx": {
+            "scale": 0.5,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 205,
+                "y": 236
+            }
+        },
+        "村舍.tsx": {
+            "dynamicWrapping": true
+        },
+        "村舍_1.tsx": {
+            "dynamicWrapping": false
+        },
+        "村舍_2.tsx": {
+            "dynamicWrapping": false
+        },
         "树木.tsx": {
             "dynamicWrapping": true
         },
+        "瓷砖_东方.tsx": {
+            "dynamicWrapping": false
+        },
         "瓷砖_墙体.tsx": {
+            "dynamicWrapping": false
+        },
+        "瓷砖_外墙.tsx": {
             "dynamicWrapping": false
         },
         "瓷砖_油灯.tsx": {
@@ -40,16 +74,20 @@
                 "y": 464
             }
         },
+        "背景图.tsx": {
+            "dynamicWrapping": true
+        },
         "资源_地面.tsx": {
             "dynamicWrapping": false
         }
     },
-    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/资源包",
+    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/女仆",
+    "map.fixedSize": false,
     "map.height": 21,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
-    "map.width": 400,
+    "map.width": 120,
     "openFiles": [
     ],
     "project": "场景.tiled-project",
@@ -61,5 +99,5 @@
         "height": 16,
         "width": 16
     },
-    "tileset.type": 1
+    "tileset.type": 0
 }

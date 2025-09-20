@@ -1,4 +1,5 @@
-﻿class KV
+﻿#pragma once
+class KV
 {
 public:
     double k;

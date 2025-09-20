@@ -4,6 +4,7 @@
 #include <chrono>
 #include "Camera.h"
 #include "Scene.h"
+#include "scene/StartScene.hpp"
 #include "scene/GameScene.hpp"
 #include "Input.h"
 
