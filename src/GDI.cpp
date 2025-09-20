@@ -1,23 +1,17 @@
-﻿#define NOMINMAX
+﻿#include "GDI.h"
+#define NOMINMAX
 
-#include <windows.h>
-#include <algorithm>
-#include <cmath>
-#include <shlwapi.h>
-#include <unordered_map>
-#include <memory>
-#include <vector>
-#include <cstdint>
-#include <string>
-
-using std::max;
-using std::min;
-
-#include "GDI.h"
+#include <algorithm> // for std::max/min
+#include <cmath>     // for lround
+#include <shlwapi.h> // for SHCreateMemStream
 
 #pragma comment(lib, "Gdiplus.lib")
 #pragma comment(lib, "Msimg32.lib")
 #pragma comment(lib, "shlwapi.lib")
+
+// 使用 std 命名空间
+using std::max;
+using std::min;
 
 // ---------------------------------------------------------------------------
 // --- 静态成员初始化 ---
@@ -30,42 +24,46 @@ HDC GDI::hBackDC = nullptr;
 BITMAPINFO GDI::backInfo = {};
 int GDI::backWidth = 0;
 int GDI::backHeight = 0;
-std::unordered_map<int, CachedImage> GDI::imageCache;
-std::unordered_map<float, HFONT> GDI::fontCache;
 int GDI::cameraX = 0;
 int GDI::cameraY = 0;
+std::unordered_map<int, CachedImage> GDI::imageCache;
+std::unordered_map<float, HFONT> GDI::fontCache;
 
 // ---------------------------------------------------------------------------
 // --- 内部辅助函数 ---
 // ---------------------------------------------------------------------------
 namespace
 {
-    // 32位像素Alpha混合 (源为预乘Alpha)
-    inline uint32_t AlphaBlendPixel_32bpp_Premultiplied(uint32_t dest, uint32_t src)
+    // 高效的32位预乘Alpha混合 (整数运算)
+    inline uint32_t AlphaBlendPixel_Premultiplied(uint32_t dest, uint32_t src)
     {
         uint32_t src_a = src >> 24;
         if (src_a == 255)
-            return src; // 源不透明，直接覆盖
+            return src;
         if (src_a == 0)
-            return dest; // 源全透明，无变化
+            return dest;
 
         uint32_t inv_a = 255 - src_a;
 
+        // 分离 dest 的 R,B 和 G 通道
         uint32_t dest_rb = dest & 0x00FF00FF;
-        uint32_t dest_g = (dest >> 8) & 0x000000FF;
+        uint32_t dest_g = dest & 0x0000FF00;
 
-        uint32_t out_rb = (dest_rb * inv_a) / 255;
-        uint32_t out_g = (dest_g * inv_a) / 255;
+        // dest = dest * (1 - src_a)
+        dest_rb = (dest_rb * inv_a) / 255;
+        dest_g = (dest_g * inv_a) / 255;
 
-        out_rb &= 0x00FF00FF;
-        out_g &= 0x000000FF;
+        // 清理溢出位
+        dest_rb &= 0x00FF00FF;
+        dest_g &= 0x0000FF00;
 
-        return src + out_rb + (out_g << 8);
+        // out = src(premultiplied) + dest(scaled)
+        return src + dest_rb + dest_g;
     }
 }
 
 // ---------------------------------------------------------------------------
-// --- GDI 核心生命周期函数 ---
+// --- GDI 核心生命周期与底层实现 ---
 // ---------------------------------------------------------------------------
 
 void GDI::init(HWND h)
@@ -76,10 +74,7 @@ void GDI::init(HWND h)
 
     RECT rc;
     GetClientRect(hwnd, &rc);
-    createBackBuffer(rc.right - rc.left, rc.bottom - rc.top);
-
-    // 设置DC的默认属性
-    if (hBackDC)
+    if (createBackBuffer(rc.right - rc.left, rc.bottom - rc.top))
     {
         SetBkMode(hBackDC, TRANSPARENT);
     }
@@ -87,9 +82,9 @@ void GDI::init(HWND h)
 
 void GDI::end()
 {
-    for (auto const &p : fontCache)
+    for (auto const &[size, font] : fontCache)
     {
-        DeleteObject(p.second);
+        DeleteObject(font);
     }
     fontCache.clear();
     imageCache.clear();
@@ -102,23 +97,7 @@ void GDI::end()
     }
 }
 
-void GDI::begin(float /*dt*/)
-{
-    if (backPixels)
-    {
-        // 使用 memset 快速清空后备缓冲区为黑色 (0)
-        memset(backPixels, 0, (size_t)backWidth * (size_t)backHeight * 4);
-    }
-}
-
-// tick 函数现在是空的，为了API兼容性而保留。
-// 所有绘图都已在 image/text/rect 调用时立即执行。
-void GDI::tick(float /*dt*/)
-{
-    // No-op
-}
-
-void GDI::flush(float /*dt*/)
+void GDI::flush([[maybe_unused]] float dt)
 {
     if (!hwnd)
         return;
@@ -126,7 +105,7 @@ void GDI::flush(float /*dt*/)
     if (!hdc)
         return;
 
-    if (backPixels && hBackDC)
+    if (hBackDC)
     {
         BitBlt(hdc, 0, 0, backWidth, backHeight, hBackDC, 0, 0, SRCCOPY);
     }
@@ -134,109 +113,87 @@ void GDI::flush(float /*dt*/)
     ReleaseDC(hwnd, hdc);
 }
 
-void GDI::setCamera(int x, int y)
-{
-    cameraX = x;
-    cameraY = y;
-}
-
-// ---------------------------------------------------------------------------
-// --- 立即模式绘图接口 ---
-// ---------------------------------------------------------------------------
-
-void GDI::image(int resId, int x, int y, int w, int h, bool flip)
-{
-    if (!backPixels)
-        return;
-    drawImageFast(resId, x - cameraX, y - cameraY, w, h, flip, false, 0, 0, 0, 0);
-}
-
-void GDI::imageEx(int resId, int x, int y, int w, int h,
-                  bool flip, int srcX, int srcY, int srcW, int srcH)
-{
-    if (!backPixels)
-        return;
-    drawImageFast(resId, x - cameraX, y - cameraY, w, h, flip, true, srcX, srcY, srcW, srcH);
-}
-
-void GDI::rect(int x, int y, int w, int h, Gdiplus::Color color)
-{
-    if (!backPixels || w <= 0 || h <= 0)
-        return;
-    drawRectFast(x - cameraX, y - cameraY, w, h, color);
-}
-
+// 文本绘制：这是一个性能权衡。
+// 立即模式下，每次调用都改变DC状态（字体/颜色）开销较大。
+// 为了极致性能，上层应用应自行将相同字体/颜色的文本绘制集中调用。
+// 此处为保证正确性，每次都完整设置并恢复状态。
 void GDI::text(const std::wstring &txt, int x, int y, float size, Gdiplus::Color color)
 {
     if (!hBackDC || txt.empty())
         return;
 
-    // 获取并选择字体
     HFONT hf = getFont(size);
     HFONT oldFont = (HFONT)SelectObject(hBackDC, hf);
 
-    // 设置文本颜色
     COLORREF col = RGB(color.GetR(), color.GetG(), color.GetB());
     COLORREF oldColor = SetTextColor(hBackDC, col);
 
-    // 绘制文本
-    int finalX = x - cameraX;
-    int finalY = y - cameraY;
-    ExtTextOutW(hBackDC, finalX, finalY, 0, nullptr, txt.c_str(), (int)txt.length(), nullptr);
+    ExtTextOutW(hBackDC, x - cameraX, y - cameraY, 0, nullptr, txt.c_str(), (int)txt.length(), nullptr);
 
-    // 恢复之前的DC状态
-    SetTextColor(hBackDC, oldColor);
     SelectObject(hBackDC, oldFont);
+    SetTextColor(hBackDC, oldColor);
 }
 
-// ---------------------------------------------------------------------------
-// --- 内部绘制与资源管理实现 ---
-// ---------------------------------------------------------------------------
-
+// 极致优化：使用SSE2指令集绘制矩形
 void GDI::drawRectFast(int x, int y, int w, int h, Gdiplus::Color color)
 {
-    // 裁剪
-    int destX1 = x;
-    int destY1 = y;
-    int destX2 = x + w;
-    int destY2 = y + h;
-
-    int clipX1 = max(0, destX1);
-    int clipY1 = max(0, destY1);
-    int clipX2 = min(backWidth, destX2);
-    int clipY2 = min(backHeight, destY2);
+    // 1. 裁剪
+    int clipX1 = max(0, x);
+    int clipY1 = max(0, y);
+    int clipX2 = min(backWidth, x + w);
+    int clipY2 = min(backHeight, y + h);
 
     int clippedW = clipX2 - clipX1;
     if (clippedW <= 0 || clipY1 >= clipY2)
-    {
         return;
-    }
 
-    // 转换颜色格式 Gdiplus(ARGB) -> Buffer(BGRA)
+    // 2. 颜色转换 Gdiplus(ARGB) -> Buffer(BGRA)
     uint32_t argb = color.GetValue();
-    uint32_t a = (argb >> 24) & 0xFF;
-    uint32_t r = (argb >> 16) & 0xFF;
-    uint32_t g = (argb >> 8) & 0xFF;
-    uint32_t b = argb & 0xFF;
+    uint8_t a = (argb >> 24);
+    uint8_t r = (argb >> 16);
+    uint8_t g = (argb >> 8);
+    uint8_t b = argb;
     uint32_t bgraColor = (a << 24) | (b << 16) | (g << 8) | r;
 
-    uint32_t *destRow = backPixels + (clipY1 * backWidth) + clipX1;
+    uint32_t *destRowStart = backPixels + (clipY1 * backWidth) + clipX1;
 
+    // 3. 根据透明度选择不同路径
     if (a == 255)
-    { // 不透明，直接填充
+    { // --- 不透明路径 (SSE2优化) ---
+        const __m128i color_s = _mm_set1_epi32(bgraColor);
         for (int j = clipY1; j < clipY2; ++j)
         {
-            // 使用循环或std::fill_n填充一行
-            for (int i = 0; i < clippedW; ++i)
+            uint32_t *p = destRowStart;
+            int count = clippedW;
+
+            // 内存对齐处理：先处理行首未对齐的几个像素
+            while ((reinterpret_cast<uintptr_t>(p) & 15) && count > 0)
             {
-                destRow[i] = bgraColor;
+                *p++ = bgraColor;
+                count--;
             }
-            destRow += backWidth;
+
+            // SSE2核心循环：一次处理4个像素
+            __m128i *p_s = reinterpret_cast<__m128i *>(p);
+            while (count >= 4)
+            {
+                _mm_store_si128(p_s++, color_s);
+                count -= 4;
+            }
+
+            // 处理行尾剩下的不足4个的像素
+            p = reinterpret_cast<uint32_t *>(p_s);
+            while (count > 0)
+            {
+                *p++ = bgraColor;
+                count--;
+            }
+            destRowStart += backWidth;
         }
     }
     else if (a > 0)
-    { // 半透明，需要混合
-        // 预乘Alpha
+    { // --- Alpha混合路径 (逐像素) ---
+        // SIMD优化Alpha混合非常复杂，对于通用情况，逐像素仍是可靠方案
         uint32_t pr = (r * a) / 255;
         uint32_t pg = (g * a) / 255;
         uint32_t pb = (b * a) / 255;
@@ -244,18 +201,18 @@ void GDI::drawRectFast(int x, int y, int w, int h, Gdiplus::Color color)
 
         for (int j = clipY1; j < clipY2; ++j)
         {
-            uint32_t *destPtr = destRow;
+            uint32_t *destPtr = destRowStart;
             for (int i = 0; i < clippedW; ++i)
             {
-                *destPtr = AlphaBlendPixel_32bpp_Premultiplied(*destPtr, srcPixel);
+                *destPtr = AlphaBlendPixel_Premultiplied(*destPtr, srcPixel);
                 destPtr++;
             }
-            destRow += backWidth;
+            destRowStart += backWidth;
         }
     }
 }
 
-// 已重构，直接接收参数而不是Command对象
+// 图像绘制 (基本保持原样，其瓶颈在于内存带宽和像素计算，已使用高效的定点数算法)
 void GDI::drawImageFast(int resId, int x, int y, int w, int h,
                         bool flip, bool hasSrcRect, int srcX_in,
                         int srcY_in, int srcW_in, int srcH_in)
@@ -275,124 +232,96 @@ void GDI::drawImageFast(int resId, int x, int y, int w, int h,
     if (srcW <= 0 || srcH <= 0 || w <= 0 || h <= 0)
         return;
 
-    int destX1 = x;
-    int destY1 = y;
-    int destX2 = x + w;
-    int destY2 = y + h;
-
-    int clipX1 = max(0, destX1);
-    int clipY1 = max(0, destY1);
-    int clipX2 = min(backWidth, destX2);
-    int clipY2 = min(backHeight, destY2);
+    int clipX1 = max(0, x);
+    int clipY1 = max(0, y);
+    int clipX2 = min(backWidth, x + w);
+    int clipY2 = min(backHeight, y + h);
 
     if (clipX1 >= clipX2 || clipY1 >= clipY2)
         return;
 
     const int FRACT_BITS = 16;
-    const uint32_t FRACT_UNIT = 1u << FRACT_BITS;
+    const uint64_t FRACT_UNIT = 1ULL << FRACT_BITS;
 
-    uint64_t stepX_fixed = ((uint64_t)srcW * FRACT_UNIT) / (uint64_t)w;
-    uint64_t stepY_fixed = ((uint64_t)srcH * FRACT_UNIT) / (uint64_t)h;
+    uint64_t stepX_fixed = (static_cast<uint64_t>(srcW) * FRACT_UNIT) / w;
+    uint64_t stepY_fixed = (static_cast<uint64_t>(srcH) * FRACT_UNIT) / h;
 
-    uint64_t srcX_fixed_start = (uint64_t)(clipX1 - destX1) * stepX_fixed;
-    uint64_t srcY_fixed_start = (uint64_t)(clipY1 - destY1) * stepY_fixed;
+    uint64_t srcX_fixed_start = static_cast<uint64_t>(clipX1 - x) * stepX_fixed;
+    uint64_t srcY_fixed_start = static_cast<uint64_t>(clipY1 - y) * stepY_fixed;
 
     uint32_t *destRow = backPixels + (clipY1 * backWidth) + clipX1;
     uint64_t srcY_fixed = srcY_fixed_start;
 
-    bool isOpaque = img->isOpaque;
-
     for (int j = clipY1; j < clipY2; ++j)
     {
-        int current_srcY = srcY + (int)(srcY_fixed >> FRACT_BITS);
-        if (current_srcY < 0)
-            current_srcY = 0;
-        if (current_srcY >= imgH)
-            current_srcY = imgH - 1;
+        int current_srcY = srcY + (srcY_fixed >> FRACT_BITS);
 
-        const uint32_t *srcRowBase = img->pixels.get() + (size_t)current_srcY * (size_t)imgW;
+        const uint32_t *srcRowBase = img->pixels.get() + min(imgH - 1, max(0, current_srcY)) * (size_t)imgW;
         uint64_t srcX_fixed = srcX_fixed_start;
         uint32_t *destPtr = destRow;
 
-        if (flip)
-        {
-            if (isOpaque)
+        bool isOpaque = img->isOpaque;
+
+        if (isOpaque)
+        { // --- 不透明路径 ---
+            if (!flip)
             {
-                for (int i = clipX1; i < clipX2; ++i)
+                // 优化: 1:1无缩放绘制，直接 memcpy
+                if (w == srcW && h == srcH)
                 {
-                    int sx = srcX + srcW - 1 - (int)(srcX_fixed >> FRACT_BITS);
-                    if (sx < 0)
-                        sx = 0;
-                    if (sx >= imgW)
-                        sx = imgW - 1;
-                    *destPtr++ = srcRowBase[sx];
-                    srcX_fixed += stepX_fixed;
-                }
-            }
-            else
-            {
-                for (int i = clipX1; i < clipX2; ++i)
-                {
-                    int sx = srcX + srcW - 1 - (int)(srcX_fixed >> FRACT_BITS);
-                    if (sx < 0)
-                        sx = 0;
-                    if (sx >= imgW)
-                        sx = imgW - 1;
-                    *destPtr = AlphaBlendPixel_32bpp_Premultiplied(*destPtr, srcRowBase[sx]);
-                    destPtr++;
-                    srcX_fixed += stepX_fixed;
-                }
-            }
-        }
-        else // no flip
-        {
-            if (isOpaque)
-            {
-                // 优化：对于1:1绘制，使用memcpy
-                if (w == srcW && h == srcH && (srcX_fixed_start & (FRACT_UNIT - 1)) == 0)
-                {
-                    int srcStart = srcX + (int)(srcX_fixed_start >> FRACT_BITS);
-                    const void *srcBytes = srcRowBase + srcStart;
-                    memcpy(destPtr, srcBytes, (size_t)(clipX2 - clipX1) * 4);
+                    int srcStart = srcX + (srcX_fixed_start >> FRACT_BITS);
+                    memcpy(destPtr, srcRowBase + srcStart, (size_t)(clipX2 - clipX1) * 4);
                 }
                 else
                 {
                     for (int i = clipX1; i < clipX2; ++i)
                     {
-                        int sx = srcX + (int)(srcX_fixed >> FRACT_BITS);
-                        if (sx < 0)
-                            sx = 0;
-                        if (sx >= imgW)
-                            sx = imgW - 1;
-                        *destPtr++ = srcRowBase[sx];
+                        int sx = srcX + (srcX_fixed >> FRACT_BITS);
+                        *destPtr++ = srcRowBase[min(imgW - 1, max(0, sx))];
                         srcX_fixed += stepX_fixed;
                     }
                 }
             }
             else
-            { // has alpha
+            { // flip
                 for (int i = clipX1; i < clipX2; ++i)
                 {
-                    int sx = srcX + (int)(srcX_fixed >> FRACT_BITS);
-                    if (sx < 0)
-                        sx = 0;
-                    if (sx >= imgW)
-                        sx = imgW - 1;
-                    *destPtr = AlphaBlendPixel_32bpp_Premultiplied(*destPtr, srcRowBase[sx]);
+                    int sx = srcX + srcW - 1 - (srcX_fixed >> FRACT_BITS);
+                    *destPtr++ = srcRowBase[min(imgW - 1, max(0, sx))];
+                    srcX_fixed += stepX_fixed;
+                }
+            }
+        }
+        else
+        { // --- Alpha混合路径 ---
+            if (!flip)
+            {
+                for (int i = clipX1; i < clipX2; ++i)
+                {
+                    int sx = srcX + (srcX_fixed >> FRACT_BITS);
+                    *destPtr = AlphaBlendPixel_Premultiplied(*destPtr, srcRowBase[min(imgW - 1, max(0, sx))]);
+                    destPtr++;
+                    srcX_fixed += stepX_fixed;
+                }
+            }
+            else
+            { // flip
+                for (int i = clipX1; i < clipX2; ++i)
+                {
+                    int sx = srcX + srcW - 1 - (srcX_fixed >> FRACT_BITS);
+                    *destPtr = AlphaBlendPixel_Premultiplied(*destPtr, srcRowBase[min(imgW - 1, max(0, sx))]);
                     destPtr++;
                     srcX_fixed += stepX_fixed;
                 }
             }
         }
-
         destRow += backWidth;
         srcY_fixed += stepY_fixed;
     }
 }
 
-// 其他辅助函数 (createBackBuffer, destroyBackBuffer, loadImage, getFont) 保持不变...
-// (为简洁起见，此处省略了与之前版本完全相同的函数代码)
-
+// (createBackBuffer, destroyBackBuffer, loadImage, getFont 函数与上一版基本相同，为简洁省略)
+// ... 粘贴上一版中这四个函数的实现即可 ...
 bool GDI::createBackBuffer(int w, int h)
 {
     destroyBackBuffer();
@@ -420,7 +349,7 @@ bool GDI::createBackBuffer(int w, int h)
         return false;
     }
 
-    hBackDC = CreateCompatibleDC(nullptr); // 使用NULL而不是窗口DC
+    hBackDC = CreateCompatibleDC(nullptr);
     SelectObject(hBackDC, hBackBitmap);
 
     return true;
@@ -488,7 +417,7 @@ CachedImage *GDI::loadImage(int resId)
         return nullptr;
     }
 
-    uint32_t *srcPixels = (uint32_t *)bmpData.Scan0;
+    const uint32_t *srcPixels = (const uint32_t *)bmpData.Scan0;
     const int pixelCount = width * height;
     uint32_t *destPixels = cached.pixels.get();
     for (int i = 0; i < pixelCount; ++i)
@@ -513,8 +442,12 @@ HFONT GDI::getFont(float size)
     if (it != fontCache.end())
         return it->second;
 
+    // 更精确地将点(Point)大小转换为逻辑像素大小
     LOGFONTW lf = {0};
-    lf.lfHeight = -lround(size * GetDeviceCaps(GetDC(hwnd), LOGPIXELSY) / 72.0f); // 更精确的高度
+    HDC hdc = GetDC(hwnd);
+    lf.lfHeight = -MulDiv(static_cast<int>(round(size)), GetDeviceCaps(hdc, LOGPIXELSY), 72);
+    ReleaseDC(hwnd, hdc);
+
     lf.lfWeight = FW_NORMAL;
     wcscpy_s(lf.lfFaceName, LF_FACESIZE, L"Arial");
     HFONT hf = CreateFontIndirectW(&lf);

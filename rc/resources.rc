@@ -5,3 +5,6 @@
 
 301 RCDATA "bailongma.mp3"  
 302 RCDATA "blackrx.mp3"  
+
+401 RCDATA "avatar/king.png"
+402 RCDATA "avatar/zombie.png"

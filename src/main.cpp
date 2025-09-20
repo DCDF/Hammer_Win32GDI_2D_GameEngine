@@ -34,7 +34,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     float secondsFps = 1.0;
     bool running = true;
     std::wstring fpsText = L"0";
-    Scene::change(std::make_unique<GameScene>());
+    Scene::change(std::make_unique<StartScene>());
     while (running)
     {
         if (!pc.tick())

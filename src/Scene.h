@@ -21,6 +21,7 @@ public:
         }
 
         newScene->beforeEnter();
+        newScene->enter();
 
         // 重置 curScene：释放当前管理的对象，接管新对象的所有权。
         curScene = std::move(newScene);
