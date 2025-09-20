@@ -34,6 +34,9 @@
         "女仆_1.tsx": {
             "dynamicWrapping": false
         },
+        "女仆_7.tsx": {
+            "dynamicWrapping": false
+        },
         "战斗女仆地图.tmx": {
             "scale": 0.5,
             "selectedLayer": 1,
@@ -81,7 +84,7 @@
             "dynamicWrapping": false
         }
     },
-    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/女仆",
+    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/农作物",
     "map.fixedSize": false,
     "map.height": 21,
     "map.lastUsedFormat": "tmx",

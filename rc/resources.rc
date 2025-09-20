@@ -1,5 +1,6 @@
 1 ICON "game.ico"
-101 RCDATA "bg.png"
+101 RCDATA "map/map1.png"
+102 RCDATA "bg.png"
 
 201 RCDATA "zombie1.png"
 

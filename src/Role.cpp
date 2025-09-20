@@ -12,6 +12,8 @@
 
 extern int GAME_OFFSET_X;
 extern int GAME_LINE;
+extern int WORLD_LEFT;
+extern int WORLD_RIGHT;
 
 Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, int w_, int h_)
     : x(x_),
@@ -104,6 +106,14 @@ void Role::tick(double deltaTime)
     if (totalVec->k != 0)
     {
         x += totalVec->k * deltaTime;
+        if (x < WORLD_LEFT)
+        {
+            x = WORLD_LEFT;
+        }
+        else if (x > WORLD_RIGHT)
+        {
+            x = WORLD_RIGHT;
+        }
     }
     if (totalVec->v != 0)
     {
@@ -153,7 +163,7 @@ void Role::render()
     int destY = -imgH;
 
     GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
-    // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5); 
+    // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
 }
 
 void Role::addAnimation(const std::string &name, int start, int num, bool loop, std::vector<int> hitIndex)

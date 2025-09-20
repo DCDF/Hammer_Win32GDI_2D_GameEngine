@@ -53,6 +53,23 @@ public:
         drawImageFast(resId, x - cameraX, y - cameraY, w, h, flip, true, srcX, srcY, srcW, srcH);
     }
 
+    // 用于UI等不受相机影响的静态图
+    static void imageStatic(int resId, int x, int y)
+    {
+        if (!backPixels)
+            return;
+        drawImageStaticFast(resId, x, y);
+    }
+
+    // 新增：用于绘制世界背景等受相机影响、但不缩放的静态图
+    static void imageWorld(int resId, int x, int y)
+    {
+        if (!backPixels)
+            return;
+        // 直接复用最高效的静态图绘制函数，并传入经过相机转换的坐标
+        drawImageStaticFast(resId, x - cameraX, y - cameraY);
+    }
+
     static void rect(int x, int y, int w, int h, Gdiplus::Color color)
     {
         if (!backPixels || w <= 0 || h <= 0)
@@ -97,4 +114,5 @@ private:
                               bool flip, bool hasSrcRect, int srcX,
                               int srcY, int srcW, int srcH);
     static void drawRectFast(int x, int y, int w, int h, Gdiplus::Color color);
+    static void drawImageStaticFast(int resId, int x, int y);
 };

@@ -455,3 +455,61 @@ HFONT GDI::getFont(float size)
     fontCache[size] = hf;
     return hf;
 }
+
+/**
+ * @brief 专用于绘制静态图的底层函数（1:1绘制，无翻转，无视相机）
+ *
+ * 通过特化逻辑，为不透明图像启用逐行memcpy，性能远高于通用绘制函数。
+ */
+void GDI::drawImageStaticFast(int resId, int x, int y)
+{
+    // 1. 加载图像资源
+    CachedImage *img = loadImage(resId);
+    if (!img)
+        return;
+
+    const int imgW = img->width;
+    const int imgH = img->height;
+
+    // 2. 屏幕空间裁剪
+    const int clipX1 = max(0, x);
+    const int clipY1 = max(0, y);
+    const int clipX2 = min(backWidth, x + imgW);
+    const int clipY2 = min(backHeight, y + imgH);
+
+    // 计算裁剪后的有效宽度，如果屏幕上不可见则提前退出
+    const int clippedW = clipX2 - clipX1;
+    if (clippedW <= 0 || clipY1 >= clipY2)
+    {
+        return;
+    }
+
+    // 3. 计算图像源的起始读取位置
+    // 因为是1:1绘制，所以源坐标的偏移就等于裁剪区域的左上角与原始绘制位置的差值
+    const int srcX_start = clipX1 - x;
+    const int srcY_start = clipY1 - y;
+
+    // 4. 逐行绘制
+    for (int j = clipY1; j < clipY2; ++j)
+    {
+        // 计算目标行和源行的起始指针
+        uint32_t *destPtr = backPixels + (size_t)j * backWidth + clipX1;
+        const uint32_t *srcPtr = img->pixels.get() + (size_t)(srcY_start + (j - clipY1)) * imgW + srcX_start;
+
+        // 5. 根据不透明属性选择最高效的路径
+        if (img->isOpaque)
+        {
+            // 优化核心：对于不透明图像，直接内存复制整行像素
+            memcpy(destPtr, srcPtr, (size_t)clippedW * sizeof(uint32_t));
+        }
+        else
+        {
+            // 对于带Alpha通道的图像，逐像素进行混合
+            for (int i = 0; i < clippedW; ++i)
+            {
+                // AlphaBlendPixel_Premultiplied 函数已在您的代码中定义
+                destPtr[i] = AlphaBlendPixel_Premultiplied(destPtr[i], srcPtr[i]);
+            }
+        }
+    }
+}

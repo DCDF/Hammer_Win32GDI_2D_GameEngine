@@ -2,6 +2,8 @@
 
 extern int GAME_WIDTH;
 extern int GAME_HEIGHT;
+extern int WORLD_LEFT;
+extern int WORLD_RIGHT;
 
 int Camera::x = 0;
 int Camera::y = 0;
@@ -17,6 +19,15 @@ int Camera::getOffsetX()
     if (m_target == nullptr)
         return 0;
     double tx = m_target->x - GAME_WIDTH / 2;
+
+    if (tx < 0)
+    {
+        tx = 0;
+    }
+    else if (tx > WORLD_RIGHT)
+    {
+        tx = WORLD_RIGHT;
+    }
     return tx;
 }
 

@@ -27,7 +27,7 @@ public:
     {
         Audios::bg(301);
 
-        role = std::make_unique<Role>(201, 320, GAME_LINE, 64, 64, 10, 8, 32, 32);
+        role = std::make_unique<Role>(201, 64, GAME_LINE, 64, 64, 10, 8, 32, 32);
         role->face = false;
         role->addAnimation("idle", 0, 7, true, {});
         role->addAnimation("move", 7, 8, true, {});
@@ -49,25 +49,26 @@ public:
     }
 
     void render() override
-    { 
-        if (GAME_OFFSET_X > floorX)
-        {
-            if (GAME_OFFSET_X > floorX + GAME_WIDTH)
-            {
-                floorX += GAME_WIDTH;
-            }
-            GDI::image(101, floorX + GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
-        }
+    {
+        // if (GAME_OFFSET_X > floorX)
+        // {
+        //     if (GAME_OFFSET_X > floorX + GAME_WIDTH)
+        //     {
+        //         floorX += GAME_WIDTH;
+        //     }
+        //     GDI::image(101, floorX + GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
+        // }
 
-        if (GAME_OFFSET_X < floorX)
-        {
-            if (GAME_OFFSET_X < floorX - GAME_WIDTH)
-            {
-                floorX -= GAME_WIDTH;
-            }
-            GDI::image(101, floorX - GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
-        }
-        GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
+        // if (GAME_OFFSET_X < floorX)
+        // {
+        //     if (GAME_OFFSET_X < floorX - GAME_WIDTH)
+        //     {
+        //         floorX -= GAME_WIDTH;
+        //     }
+        //     GDI::image(101, floorX - GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
+        // }
+        // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
+        GDI::imageWorld(101, 0, 0);
         role->render();
     }
 

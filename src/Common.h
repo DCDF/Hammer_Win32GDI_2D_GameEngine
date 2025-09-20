@@ -7,3 +7,5 @@ extern int GAME_HEIGHT;
 extern int GAME_OFFSET_X;
 extern int GAME_OFFSET_Y;
 extern int GAME_LINE;
+extern int WORLD_LEFT;
+extern int WORLD_RIGHT;
