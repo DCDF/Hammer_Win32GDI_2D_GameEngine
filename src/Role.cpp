@@ -153,7 +153,7 @@ void Role::render()
     int destY = -imgH;
 
     GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
-    GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset));
+    // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5); 
 }
 
 void Role::addAnimation(const std::string &name, int start, int num, bool loop, std::vector<int> hitIndex)

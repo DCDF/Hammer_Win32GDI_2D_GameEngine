@@ -45,7 +45,7 @@ public:
     double x;
     double y;
     // gravity
-    double gravity = 600;
+    double gravity = 800;
     double upSpeed = 0;
     double downSpeed = 0;
     // movement / input vectors (KV is your small struct)

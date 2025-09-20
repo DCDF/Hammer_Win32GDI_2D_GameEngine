@@ -66,6 +66,8 @@
         "xhash": "cpp",
         "algorithm": "cpp",
         "iostream": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "functional": "cpp",
+        "unordered_set": "cpp"
     }
 }

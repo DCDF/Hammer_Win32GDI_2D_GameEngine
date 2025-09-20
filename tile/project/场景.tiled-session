@@ -1,0 +1,65 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "640_336_16_16.tmx": {
+            "scale": 1.4205468749999999,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 319.947203431777,
+                "y": 168.24506407083544
+            }
+        },
+        "场景1.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 305.5,
+                "y": 225
+            }
+        },
+        "树木.tsx": {
+            "dynamicWrapping": true
+        },
+        "瓷砖_墙体.tsx": {
+            "dynamicWrapping": false
+        },
+        "瓷砖_油灯.tsx": {
+            "dynamicWrapping": false
+        },
+        "皇宫.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 422,
+                "y": 464
+            }
+        },
+        "资源_地面.tsx": {
+            "dynamicWrapping": false
+        }
+    },
+    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/资源包",
+    "map.height": 21,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 400,
+    "openFiles": [
+    ],
+    "project": "场景.tiled-project",
+    "recentFiles": [
+        "皇宫.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    },
+    "tileset.type": 1
+}

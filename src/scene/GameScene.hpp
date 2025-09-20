@@ -49,14 +49,14 @@ public:
     }
 
     void render() override
-    {
+    { 
         if (GAME_OFFSET_X > floorX)
         {
             if (GAME_OFFSET_X > floorX + GAME_WIDTH)
             {
                 floorX += GAME_WIDTH;
             }
-            GDI::image(101, floorX + GAME_WIDTH, 0, GAME_WIDTH, GAME_HEIGHT);
+            GDI::image(101, floorX + GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
         }
 
         if (GAME_OFFSET_X < floorX)
@@ -65,9 +65,9 @@ public:
             {
                 floorX -= GAME_WIDTH;
             }
-            GDI::image(101, floorX - GAME_WIDTH, 0, GAME_WIDTH, GAME_HEIGHT);
+            GDI::image(101, floorX - GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
         }
-        GDI::image(101, floorX, 0, GAME_WIDTH, GAME_HEIGHT);
+        GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
         role->render();
     }
 
