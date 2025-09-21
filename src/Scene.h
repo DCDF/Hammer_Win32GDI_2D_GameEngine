@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <string>
 #include "GDI.h"
+#include "QTree.h"
 
 class Scene
 {
@@ -19,7 +20,7 @@ public:
         {
             curScene->exit();
         }
-
+        QTree::clear();
         newScene->beforeEnter();
         newScene->enter();
 

@@ -1,6 +1,5 @@
 ﻿#include "Role.h"
 
-#include "Anim.h"
 #include "KV.h"
 #include "GDI.h"
 
@@ -9,11 +8,20 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include "QTree.h"
+#include "PropModel.h"
 
 extern int GAME_OFFSET_X;
 extern int GAME_LINE;
 extern int WORLD_LEFT;
 extern int WORLD_RIGHT;
+
+int Role::ROLE_ID = 0;
+
+bool Role::hasCollision()
+{
+    return true;
+}
 
 Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, int w_, int h_)
     : x(x_),
@@ -36,13 +44,16 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
       face(true),
       resId(resId),
       anim(nullptr),
-      name(L"")
+      name(L""),
+      id(ROLE_ID++)
 {
     anim = std::make_unique<Anim>();
     handVec = std::make_unique<KV>();
     otherVec = std::make_unique<KV>();
     totalVec = std::make_unique<KV>();
     preVec = std::make_unique<KV>();
+
+    QTree::insert(id, static_cast<int>(x), static_cast<int>(y), w, h);
 }
 
 void Role::setFace(bool right)
@@ -114,6 +125,10 @@ void Role::tick(double deltaTime)
         {
             x = WORLD_RIGHT;
         }
+        if (hasCollision())
+        {
+            QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h);
+        }
     }
     if (totalVec->v != 0)
     {
@@ -128,6 +143,10 @@ void Role::tick(double deltaTime)
             }
         }
         ground = tmpGround;
+        if (hasCollision())
+        {
+            QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h);
+        }
     }
     if (y > GAME_LINE)
     {
@@ -162,6 +181,8 @@ void Role::render()
     int destX = -imgW / 2;
     int destY = -imgH;
 
+    GDI::rect(drawX, drawY, w, h);
+    // GDI::rect(drawX - w / 2, drawY - h, w, h);
     GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
 }
@@ -223,13 +244,22 @@ void Role::changeProp(PropType type, double value)
 
 double Role::getProp(PropType type)
 {
-    return props[type] || 0.0;
+    auto it = props.find(type);
+    if (it != props.end())
+    {
+        return it->second;
+    }
+    return 0.0;
 }
 void Role::onPropZero(PropType type)
 {
 }
 
-void Role::initProp(std::unordered_map<PropType, double> &&p)
+void Role::setProps(std::unordered_map<PropType, double> &&p)
 {
     props = std::move(p);
+}
+Role::~Role()
+{
+    QTree::remove(id);
 }

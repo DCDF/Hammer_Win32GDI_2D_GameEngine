@@ -9,6 +9,7 @@ PC::PC(HINSTANCE hInstance, int width, int height, const char *title)
     wc.hInstance = hInstance;
     wc.lpszClassName = "PCWindowClass";
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(1));
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     RegisterClass(&wc);
 
     RECT rc = {0, 0, width_, height_};
@@ -16,8 +17,16 @@ PC::PC(HINSTANCE hInstance, int width, int height, const char *title)
     int winWidth = rc.right - rc.left;
     int winHeight = rc.bottom - rc.top;
 
+    // 获取屏幕尺寸
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    
+    // 计算窗口位置使其居中
+    int xPos = (screenWidth - winWidth) / 2;
+    int yPos = (screenHeight - winHeight) / 2;
+
     hwnd_ = CreateWindowEx(0, "PCWindowClass", title,
-                           WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT,
+                           WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, xPos, yPos,
                            winWidth, winHeight, nullptr, nullptr, hInstance, nullptr);
 }
 

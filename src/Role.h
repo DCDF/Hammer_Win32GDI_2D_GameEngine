@@ -6,23 +6,25 @@
 #include "Damage.h"
 #include <unordered_map>
 #include "PropType.h"
+#include "Anim.h"
 namespace Gdiplus
 {
     class Bitmap;
 } // forward-declare GDI+ Bitmap
-class Anim;
 class KV;
 
 class Role
 {
 public:
-    Role(int resId, int x, int y, int imgW, int imgH, int row,int col, int w, int h);
-    virtual ~Role() = default;
+    Role(int resId, int x, int y, int imgW, int imgH, int row, int col, int w, int h);
+    virtual ~Role();
 
     bool idle = true;
     bool ground = true;
     bool face;
 
+    static int ROLE_ID;
+    int id;
     int imgW;
     int imgH;
     int w;
@@ -45,7 +47,7 @@ public:
     double x;
     double y;
     // gravity
-    double gravity = 800;
+    double gravity = 0;
     double upSpeed = 0;
     double downSpeed = 0;
     // movement / input vectors (KV is your small struct)
@@ -63,7 +65,7 @@ public:
     void changeProp(PropType type, double value);
     double getProp(PropType type);
     void onPropZero(PropType type);
-    void initProp(std::unordered_map<PropType, double> &&p);
+    void setProps(std::unordered_map<PropType, double> &&p);
 
     // control
     void setFace(bool right);
@@ -78,4 +80,6 @@ public:
 
     // HIT
     virtual void hurt(Damage *dmg);
+
+    virtual bool hasCollision();
 };

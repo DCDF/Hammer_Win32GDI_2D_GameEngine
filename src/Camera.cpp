@@ -24,15 +24,15 @@ int Camera::getOffsetX()
     {
         tx = 0;
     }
-    else if (tx > WORLD_RIGHT)
+    else if (tx > WORLD_RIGHT - GAME_WIDTH)
     {
-        tx = WORLD_RIGHT;
+        tx = WORLD_RIGHT - GAME_WIDTH;
     }
     return tx;
-}
+} 
 
 int Camera::getOffsetY()
-{
+{ 
     if (m_target == nullptr)
         return 0;
 

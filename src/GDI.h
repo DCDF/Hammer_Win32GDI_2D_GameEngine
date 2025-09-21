@@ -70,7 +70,7 @@ public:
         drawImageStaticFast(resId, x - cameraX, y - cameraY);
     }
 
-    static void rect(int x, int y, int w, int h, Gdiplus::Color color)
+    static void rect(int x, int y, int w, int h, Gdiplus::Color color = Gdiplus::Color::Green)
     {
         if (!backPixels || w <= 0 || h <= 0)
             return;

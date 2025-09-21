@@ -13,7 +13,7 @@ private:
             {PropType::HP, 100},
             {PropType::ATK, 10},
             {PropType::DEF, 10},
-            {PropType::JUMP_SPEED, 200}
+            {PropType::JUMP_SPEED, 600}
         };
         return props;
     }

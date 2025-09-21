@@ -7,6 +7,8 @@
 #include "scene/StartScene.hpp"
 #include "scene/GameScene.hpp"
 #include "Input.h"
+#include "QTree.h"
+#include <iostream>
 
 extern int GAME_WIDTH;
 extern int GAME_HEIGHT;
@@ -34,6 +36,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     float secondsFps = 1.0;
     bool running = true;
     std::wstring fpsText = L"0";
+
+    QTree::init(WORLD_RIGHT - WORLD_LEFT, GAME_HEIGHT);
+    // 设置碰撞回调
+    QTree::setOnCollision([](int id1, int id2, Direction dir)
+                          { GDI::text(L"碰撞开始: " + std::to_wstring(id1) + L" 和 " + std::to_wstring(id2), 10, 10); });
+
     Scene::change(std::make_unique<StartScene>());
     while (running)
     {
@@ -61,11 +69,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::setCamera(GAME_OFFSET_X, GAME_OFFSET_Y);
         Scene::curScene->render();
         GDI::tick(dt);
-        
+
         GDI::setCamera(0, 0);
         Scene::curScene->renderGlobal();
-        GDI::text(fpsText,  10, 10);
+        GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
+
+        // 更新碰撞状态（在每帧结束时调用）
+        QTree::updateCollisions();
     }
 
     GDI::end();

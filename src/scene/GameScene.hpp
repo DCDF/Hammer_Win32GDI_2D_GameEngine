@@ -7,19 +7,22 @@
 #include <ctime>
 #include "../Audios.h"
 #include "../KV.h"
-#include "../PropModel.h"
 #include "../Input.h"
+#include "../QTree.h"
+#include "../role/LaoA.hpp"
 
 extern int GAME_WIDTH;
 extern int GAME_HEIGHT;
 extern int GAME_OFFSET_X;
 extern int GAME_LINE;
+extern int WORLD_LEFT;
+extern int WORLD_RIGHT;
 class GameScene : public Scene
 {
 
 protected:
-    std::unique_ptr<Role> role;
-    std::unique_ptr<Role> shuiyue;
+    std::vector<std::unique_ptr<Role>> roleVec;
+    Role *role;
     int floorX = 0;
 
 public:
@@ -27,17 +30,14 @@ public:
     {
         Audios::bg(301);
 
-        role = std::make_unique<Role>(201, 64, GAME_LINE, 64, 64, 10, 8, 32, 32);
-        role->face = false;
-        role->addAnimation("idle", 0, 7, true, {});
-        role->addAnimation("move", 7, 8, true, {});
-        role->play("idle");
-        role->setFace(true);
-        role->initProp(PropModel::roleProps({{PropType::MAX_HP, 200},
-                                             {PropType::HP, 200},
-                                             {PropType::ATK, 15}}));
-        role->name = L"牢a";
-        Camera::setTarget(role.get());
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        role = roleVec.back().get();
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 128, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 192, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        Camera::setTarget(role);
     }
 
     void enter() override
@@ -69,7 +69,15 @@ public:
         // }
         // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
         GDI::imageWorld(101, 0, 0);
-        role->render();
+        int count = 0;
+        for (auto &info : QTree::getCollision(role->id))
+        {
+            GDI::text(std::to_wstring(info.otherId) + L"->" + std::to_wstring(int(info.dir)), 320, count * 20);
+        }
+        for (auto &role : roleVec)
+        {
+            role->render();
+        }
     }
 
     void renderGlobal() override
@@ -80,18 +88,36 @@ public:
     {
         if (Input::IsKeyDown('A'))
         {
-            role->handVec->k -= 100;
+            // role->handVec->k -= 100;
+            role->x -= 100 * deltaTime;
         }
         else if (Input::IsKeyDown('D'))
         {
-            role->handVec->k += 100;
+            // role->handVec->k += 100;
+            role->x += 100 * deltaTime;
+            QTree::update(role->id, role->x, role->y, role->w, role->h);
         }
-
-        if (role->ground && Input::IsKeyDown(' '))
+        else if (Input::IsKeyDown('W'))
         {
-            role->upSpeed = 200;
+            // role->handVec->k += 100;
+            role->y -= 100 * deltaTime;
+            QTree::update(role->id, role->x, role->y, role->w, role->h);
+        }
+        else if (Input::IsKeyDown('S'))
+        {
+            // role->handVec->k += 100;
+            role->y += 100 * deltaTime;
+            QTree::update(role->id, role->x, role->y, role->w, role->h);
         }
 
-        role->tick(deltaTime);
+                if (role->ground && Input::IsKeyDown(' '))
+        {
+            role->upSpeed = role->getProp(PropType::JUMP_SPEED);
+        }
+
+        for (auto &role : roleVec)
+        {
+            role->tick(deltaTime);
+        }
     }
 };
