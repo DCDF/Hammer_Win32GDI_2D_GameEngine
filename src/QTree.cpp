@@ -393,21 +393,6 @@ void QTree::updateCollisions()
 
                 // 计算碰撞方向
                 Direction dir = calculateDirection(*obj, *other);
-                Direction otherDir;
-                switch (dir)
-                {
-                case Direction::UP:
-                    otherDir = Direction::DOWN;
-                    break;
-                case Direction::DOWN:
-                    otherDir = Direction::UP;
-                    break;
-                case Direction::LEFT:
-                    otherDir = Direction::RIGHT;
-                    break;
-                case Direction::RIGHT:
-                    otherDir = Direction::LEFT;
-                }
                 // 记录碰撞
                 currentCollisions[id][otherId] = dir;
                 currentCollisions[otherId][id] =

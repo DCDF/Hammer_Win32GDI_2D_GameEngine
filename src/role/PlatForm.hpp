@@ -12,23 +12,30 @@ public:
 
     virtual void onCollision(Role *other, Direction dir) override
     {
-        if (int(dir) == int(Direction::UP))
+        if (int(dir) == int(Direction::DOWN) && other->upSpeed <= 0)
         { 
-            other->y = y;
-            other->line = static_cast<int>(y - h/2);
+        other->y = y - other->h;
+        other->line = y - other->h;
+        other->ground = true;
+        other->downSpeed = 0;
+        other->upSpeed = 0;
         }
         other->flag += 1;
     }
     virtual void onCollisioning(Role *other, Direction dir) override
     {
-        if (int(dir) == int(Direction::UP))
+        if (int(dir) == int(Direction::DOWN)&& other->upSpeed <= 0)
         { 
-            other->line = y;
+        other->y = y - other->h;
+        other->line = y - other->h;
+        other->ground = true;
+        other->downSpeed = 0;
+        other->upSpeed = 0;
         }
     }
     virtual void onCollisionOut(Role *other) override
     {
-        bool a = false;
-        other->flag -= 1;
+       other->flag -= 1;
+    // 重置为默认地面线
     }
 };

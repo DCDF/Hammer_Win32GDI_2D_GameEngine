@@ -1,6 +1,6 @@
 ﻿#include "Input.h"
-#include <windowsx.h> // 用于 GET_X_LPARAM 和 GET_Y_LPARAM
-
+#include <windowsx.h>
+#include "Scene.h"
 // 静态成员初始化
 HWND Input::m_hwnd = nullptr;
 std::unordered_map<int, bool> Input::keys;
@@ -102,12 +102,14 @@ void Input::ProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_SYSKEYDOWN:
         keys[wParam] = true;
         m_pressedKeys.insert(wParam);
+        Scene::curScene->onKeyDown(wParam);
         break;
 
     case WM_KEYUP:
     case WM_SYSKEYUP:
         keys[wParam] = false;
         m_pressedKeys.erase(wParam);
+        Scene::curScene->onKeyUp(wParam);
         break;
     }
 }

@@ -48,6 +48,9 @@ public:
         return nullptr;
     }
 
+    virtual void onKeyDown(int key){}
+    virtual void onKeyUp(int key){}
+
     virtual void beforeEnter() {}
 
     virtual void enter() {}

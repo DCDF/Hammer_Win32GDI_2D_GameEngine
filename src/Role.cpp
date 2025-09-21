@@ -47,7 +47,7 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
     totalVec = std::make_unique<KV>();
     preVec = std::make_unique<KV>();
     prePos = std::make_unique<KV>();
-
+    line = GAME_LINE;
     QTree::insert(id, static_cast<int>(x), static_cast<int>(y), w, h, this);
 }
 
@@ -91,7 +91,7 @@ void Role::tick(double deltaTime)
             }
             else
             {
-                downSpeed += delSpeed * (y > line ? -1 : 1);
+                downSpeed += delSpeed;
                 otherVec->v += downSpeed;
             }
         }
@@ -143,16 +143,11 @@ void Role::tick(double deltaTime)
             QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h);
         }
         change = true;
-        if (prePos->v > line && y < line)
-        {
-            y = line;
-        }
-        else if (prePos->v < line && y > line)
-        {
-            y = line;
-        }
     }
-    bool tmpGround = y == line;
+    if(y >= line){
+        y = line;
+    }
+    bool tmpGround = y >= line;
     if (ground != tmpGround)
     {
         if (ground)

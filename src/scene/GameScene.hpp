@@ -39,9 +39,19 @@ public:
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
         
-        roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, 300, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, 256, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, 280, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
+    }
+
+    void onKeyDown(int key) override
+    {
+
+        if (role->ground && Input::IsKeyDown(' '))
+        {
+            role->upSpeed = role->getProp(PropType::JUMP_SPEED);
+        }
     }
 
     void enter() override
@@ -113,12 +123,6 @@ public:
         {
             GAME_LINE = 100;
         }
-
-        if (role->ground && Input::IsKeyDown(' '))
-        {
-            role->upSpeed = role->getProp(PropType::JUMP_SPEED);
-        }
-
         for (auto &role : roleVec)
         {
             role->tick(deltaTime);
