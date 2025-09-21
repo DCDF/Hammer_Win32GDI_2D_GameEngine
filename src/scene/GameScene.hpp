@@ -69,11 +69,11 @@ public:
         // }
         // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
         GDI::imageWorld(101, 0, 0);
-        int count = 0;
-        for (auto &info : QTree::getCollision(role->id))
-        {
-            GDI::text(std::to_wstring(info.otherId) + L"->" + std::to_wstring(int(info.dir)), 320, count * 20);
-        }
+        // int count = 0;
+        // for (auto &info : QTree::getCollision(role->id))
+        // {
+        //     GDI::text(std::to_wstring(info.otherId) + L"->" + std::to_wstring(int(info.dir)), 320, count++ * 20);
+        // }
         for (auto &role : roleVec)
         {
             role->render();
@@ -88,29 +88,18 @@ public:
     {
         if (Input::IsKeyDown('A'))
         {
-            // role->handVec->k -= 100;
-            role->x -= 100 * deltaTime;
+            role->handVec->k -= 100;
+            // role->x -= 100 * deltaTime;
+            // QTree::update(role->id, role->x, role->y, role->w, role->h);
         }
         else if (Input::IsKeyDown('D'))
         {
-            // role->handVec->k += 100;
-            role->x += 100 * deltaTime;
-            QTree::update(role->id, role->x, role->y, role->w, role->h);
-        }
-        else if (Input::IsKeyDown('W'))
-        {
-            // role->handVec->k += 100;
-            role->y -= 100 * deltaTime;
-            QTree::update(role->id, role->x, role->y, role->w, role->h);
-        }
-        else if (Input::IsKeyDown('S'))
-        {
-            // role->handVec->k += 100;
-            role->y += 100 * deltaTime;
-            QTree::update(role->id, role->x, role->y, role->w, role->h);
+            role->handVec->k += 100;
+            // role->x += 100 * deltaTime;
+            // QTree::update(role->id, role->x, role->y, role->w, role->h);
         }
 
-                if (role->ground && Input::IsKeyDown(' '))
+        if (role->ground && Input::IsKeyDown(' '))
         {
             role->upSpeed = role->getProp(PropType::JUMP_SPEED);
         }

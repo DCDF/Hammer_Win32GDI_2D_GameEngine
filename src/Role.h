@@ -7,6 +7,11 @@
 #include <unordered_map>
 #include "PropType.h"
 #include "Anim.h"
+extern int GAME_OFFSET_X;
+extern int GAME_LINE;
+extern int WORLD_LEFT;
+extern int WORLD_RIGHT;
+extern int GAME_WIDTH;
 namespace Gdiplus
 {
     class Bitmap;
@@ -22,7 +27,7 @@ public:
     bool idle = true;
     bool ground = true;
     bool face;
-
+    bool outSide = false;
     static int ROLE_ID;
     int id;
     int imgW;
@@ -47,7 +52,7 @@ public:
     double x;
     double y;
     // gravity
-    double gravity = 0;
+    double gravity = 800;
     double upSpeed = 0;
     double downSpeed = 0;
     // movement / input vectors (KV is your small struct)
@@ -82,4 +87,5 @@ public:
     virtual void hurt(Damage *dmg);
 
     virtual bool hasCollision();
+    void checkTickState();
 };

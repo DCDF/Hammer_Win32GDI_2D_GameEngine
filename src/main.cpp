@@ -37,10 +37,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     bool running = true;
     std::wstring fpsText = L"0";
 
-    QTree::init(WORLD_RIGHT - WORLD_LEFT, GAME_HEIGHT);
+    QTree::init(2048, 2048);
     // 设置碰撞回调
-    QTree::setOnCollision([](int id1, int id2, Direction dir)
-                          { GDI::text(L"碰撞开始: " + std::to_wstring(id1) + L" 和 " + std::to_wstring(id2), 10, 10); });
 
     Scene::change(std::make_unique<StartScene>());
     while (running)

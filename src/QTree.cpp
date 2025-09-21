@@ -78,18 +78,18 @@ bool QuadNode::remove(int id)
     return false;
 }
 
-void QuadNode::update(Object *object, std::unordered_set<int> &movedObjects)
+void QuadNode::update(Object *object, std::unordered_set<int> &movedObjects, bool &needsReinsertion)
 {
     // 检查对象是否仍在当前节点范围内
-    if (contains(object))
+    if (this->contains(object))
     {
         // 如果在子节点中，更新子节点
-        if (hasChildren)
+        if (this->hasChildren)
         {
-            int index = getIndex(object);
+            int index = this->getIndex(object);
             if (index != -1)
             {
-                children[index]->update(object, movedObjects);
+                this->children[index]->update(object, movedObjects, needsReinsertion);
                 return;
             }
         }
@@ -100,8 +100,8 @@ void QuadNode::update(Object *object, std::unordered_set<int> &movedObjects)
     else
     {
         // 对象已移出当前节点范围，需要重新插入到树中
-        remove(object->id);
-        // 重新插入逻辑由QTree处理
+        this->remove(object->id);
+        needsReinsertion = true;
     }
 }
 
@@ -213,21 +213,24 @@ int QuadNode::getIndex(Object *object) const
     int verticalMidpoint = x + width / 2;
     int horizontalMidpoint = y + height / 2;
 
-    bool topQuadrant = object->y < horizontalMidpoint && object->y + object->h < horizontalMidpoint;
-    bool bottomQuadrant = object->y > horizontalMidpoint;
+    // 检查对象完全在哪个象限
+    bool topHalf = object->y < horizontalMidpoint && object->y + object->h < horizontalMidpoint;
+    bool bottomHalf = object->y > horizontalMidpoint;
+    bool leftHalf = object->x < verticalMidpoint && object->x + object->w < verticalMidpoint;
+    bool rightHalf = object->x > verticalMidpoint;
 
-    if (object->x < verticalMidpoint && object->x + object->w < verticalMidpoint)
+    if (leftHalf)
     {
-        if (topQuadrant)
+        if (topHalf)
             return 0;
-        else if (bottomQuadrant)
+        else if (bottomHalf)
             return 2;
     }
-    else if (object->x > verticalMidpoint)
+    else if (rightHalf)
     {
-        if (topQuadrant)
+        if (topHalf)
             return 1;
-        else if (bottomQuadrant)
+        else if (bottomHalf)
             return 3;
     }
 
@@ -274,7 +277,18 @@ void QTree::update(int id, int x, int y, int w, int h)
         objectsToCheck.insert(id);
 
         // 更新四叉树中的对象位置
-        root->update(it->second.get(), objectsToCheck);
+        bool needsReinsertion = false;
+        root->update(it->second.get(), objectsToCheck, needsReinsertion);
+
+        // 如果需要重新插入，先删除再插入
+        if (needsReinsertion)
+        {
+            root->remove(id);
+            if (root->insert(it->second.get()))
+            {
+                objectsToCheck.insert(id);
+            }
+        }
     }
 }
 
@@ -338,7 +352,7 @@ std::vector<CollisionInfo> QTree::getCollision(int id)
 
 void QTree::updateCollisions()
 {
-    if (!initialized || objectsToCheck.empty())
+    if (!initialized)
         return;
 
     // 交换当前和之前的碰撞状态
@@ -346,6 +360,7 @@ void QTree::updateCollisions()
     currentCollisions.clear();
 
     // 检查需要更新的对象的碰撞
+    std::unordered_set<int> processedObjects;
     for (int id : objectsToCheck)
     {
         auto it = objects.find(id);
@@ -353,6 +368,7 @@ void QTree::updateCollisions()
             continue;
 
         Object *obj = it->second.get();
+        processedObjects.insert(id);
 
         // 获取可能碰撞的对象
         std::unordered_set<int> potentialCollisions;
@@ -385,6 +401,9 @@ void QTree::updateCollisions()
                                                            : (dir == Direction::RIGHT)  ? Direction::LEFT
                                                                                         : Direction::NONE;
 
+                // 标记被动碰撞的物体也需要处理
+                processedObjects.insert(otherId);
+
                 // 检查碰撞状态变化并触发回调
                 auto prevIt = previousCollisions.find(id);
                 bool wasColliding = prevIt != previousCollisions.end() &&
@@ -410,7 +429,7 @@ void QTree::updateCollisions()
         }
     }
 
-    // 检查碰撞结束
+    // 检查碰撞结束（需要检查所有之前有碰撞的对象）
     for (const auto &pair : previousCollisions)
     {
         int id = pair.first;
@@ -418,6 +437,7 @@ void QTree::updateCollisions()
         {
             int otherId = collision.first;
 
+            // 如果当前帧没有这个碰撞，触发碰撞结束回调
             auto currentIt = currentCollisions.find(id);
             if (currentIt == currentCollisions.end() ||
                 currentIt->second.find(otherId) == currentIt->second.end())
@@ -431,32 +451,34 @@ void QTree::updateCollisions()
         }
     }
 
-    objectsToCheck.clear();
+    objectsToCheck = processedObjects;
 }
 
 Direction QTree::calculateDirection(const Object &a, const Object &b)
 {
+    // 计算中心点
+    float aCenterX = static_cast<float>(a.x) + static_cast<float>(a.w) / 2.0f;
+    float aCenterY = static_cast<float>(a.y) + static_cast<float>(a.h) / 2.0f;
+    float bCenterX = static_cast<float>(b.x) + static_cast<float>(b.w) / 2.0f;
+    float bCenterY = static_cast<float>(b.y) + static_cast<float>(b.h) / 2.0f;
+
     // 计算重叠量
-    float overlapLeft = a.x + a.w - b.x;
-    float overlapRight = b.x + b.w - a.x;
-    float overlapTop = a.y + a.h - b.y;
-    float overlapBottom = b.y + b.h - a.y;
+    float overlapLeft = static_cast<float>(a.x + a.w) - static_cast<float>(b.x);
+    float overlapRight = static_cast<float>(b.x + b.w) - static_cast<float>(a.x);
+    float overlapTop = static_cast<float>(a.y + a.h) - static_cast<float>(b.y);
+    float overlapBottom = static_cast<float>(b.y + b.h) - static_cast<float>(a.y);
 
     // 找出最小重叠方向
-    bool fromLeft = overlapLeft < overlapRight;
-    bool fromTop = overlapTop < overlapBottom;
+    float minOverlap = std::min({overlapLeft, overlapRight, overlapTop, overlapBottom});
 
-    float minOverlapX = fromLeft ? overlapLeft : overlapRight;
-    float minOverlapY = fromTop ? overlapTop : overlapBottom;
-
-    if (minOverlapX < minOverlapY)
-    {
-        return fromLeft ? Direction::LEFT : Direction::RIGHT;
-    }
+    if (minOverlap == overlapLeft)
+        return Direction::LEFT;
+    else if (minOverlap == overlapRight)
+        return Direction::RIGHT;
+    else if (minOverlap == overlapTop)
+        return Direction::UP;
     else
-    {
-        return fromTop ? Direction::UP : Direction::DOWN;
-    }
+        return Direction::DOWN;
 }
 
 void QTree::setOnCollision(std::function<void(int, int, Direction)> callback)

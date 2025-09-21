@@ -45,7 +45,7 @@ public:
 
     bool insert(Object *object);
     bool remove(int id);
-    void update(Object *object, std::unordered_set<int> &movedObjects);
+    void update(Object *object, std::unordered_set<int> &movedObjects, bool &needsReinsertion); // 修改方法签名
     void clear();
 
     void getPotentialCollisions(Object *object, std::unordered_set<int> &potentialCollisions);
