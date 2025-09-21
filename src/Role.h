@@ -7,17 +7,25 @@
 #include <unordered_map>
 #include "PropType.h"
 #include "Anim.h"
-#include "QTree.h"
+// #include "QTree.h" // 不再需要在这里完整包含，避免循环引用
+
 extern int GAME_OFFSET_X;
 extern int GAME_LINE;
 extern int WORLD_LEFT;
 extern int WORLD_RIGHT;
 extern int GAME_WIDTH;
+
 namespace Gdiplus
 {
     class Bitmap;
 } // forward-declare GDI+ Bitmap
+
 class KV;
+
+// --- 关键改动 ---
+// 前向声明 DirectType，打破与 QTree.h 的循环依赖
+enum class DirectType;
+
 class Role
 {
 public:
@@ -36,7 +44,8 @@ public:
     int h;
 
     int flag = 0;
-    int line;
+    int otherLine = 0;
+    int line = 0;
     int resId;
     // sprite sheet layout
     int imgCol;
@@ -92,9 +101,8 @@ public:
     virtual bool hasCollision();
     virtual void checkTickState();
 
-    virtual void onCollision(Role *other, Direction dir);
-
-    virtual void onCollisioning(Role *other, Direction dir);
-
+    // 现在这些声明是正确的，因为 DirectType 已被前向声明
+    virtual void onCollision(Role *other, DirectType dir);
+    virtual void onCollisioning(Role *other, DirectType dir);
     virtual void onCollisionOut(Role *other);
 };

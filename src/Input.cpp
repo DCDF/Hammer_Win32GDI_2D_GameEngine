@@ -100,16 +100,20 @@ void Input::ProcessMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
-        keys[wParam] = true;
-        m_pressedKeys.insert(wParam);
-        Scene::curScene->onKeyDown(wParam);
-        break;
+    {
+        int code = static_cast<int>(wParam);
+        keys[code] = true;
+        m_pressedKeys.insert(code);
+        Scene::curScene->onKeyDown(code);
+    }
+    break;
 
     case WM_KEYUP:
     case WM_SYSKEYUP:
-        keys[wParam] = false;
-        m_pressedKeys.erase(wParam);
-        Scene::curScene->onKeyUp(wParam);
+        int c = static_cast<int>(wParam);
+        keys[c] = false;
+        m_pressedKeys.erase(c);
+        Scene::curScene->onKeyUp(c);
         break;
     }
 }

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <mutex>
 #include "PropModel.h"
+#include "QTree.h"
 
 int Role::ROLE_ID = 0;
 
@@ -48,7 +49,7 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
     preVec = std::make_unique<KV>();
     prePos = std::make_unique<KV>();
     line = GAME_LINE;
-    QTree::insert(id, static_cast<int>(x), static_cast<int>(y), w, h, this);
+    QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h, this);
 }
 
 void Role::setFace(bool right)
@@ -70,6 +71,11 @@ void Role::tick(double deltaTime)
     checkTickState();
     if (outSide)
         return;
+    line = GAME_LINE;
+    if (otherLine != 0)
+    {
+        line = otherLine;
+    }
     if (gravity > 0)
     {
         double delSpeed = gravity * deltaTime;
@@ -85,11 +91,7 @@ void Role::tick(double deltaTime)
         }
         else
         {
-            if (ground)
-            {
-                downSpeed = 0;
-            }
-            else
+            if (!ground)
             {
                 downSpeed += delSpeed;
                 otherVec->v += downSpeed;
@@ -129,22 +131,19 @@ void Role::tick(double deltaTime)
         {
             x = WORLD_RIGHT;
         }
-        if (hasCollision())
-        {
-            QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h);
-        }
         change = true;
     }
     if (totalVec->v != 0)
     {
         y += totalVec->v * deltaTime;
-        if (hasCollision())
-        {
-            QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h);
-        }
         change = true;
     }
-    if(y >= line){
+    if (change && hasCollision())
+    {
+        QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h, this);
+    }
+    if (y >= line)
+    {
         y = line;
     }
     bool tmpGround = y >= line;
@@ -156,6 +155,10 @@ void Role::tick(double deltaTime)
         }
     }
     ground = tmpGround;
+    if (ground)
+    {
+        downSpeed = 0;
+    }
     if (anim)
         anim->tick(deltaTime);
 
@@ -167,7 +170,6 @@ void Role::tick(double deltaTime)
     totalVec->clear();
     prePos->k = x;
     prePos->v = y;
-    line = GAME_LINE;
 }
 
 void Role::render()
@@ -178,8 +180,8 @@ void Role::render()
     // 计算绘制位置
     int drawX = static_cast<int>(x);
     int drawY = static_cast<int>(y);
-    // GDI::rect(drawX, drawY, w, h);
-    GDI::rect(drawX - w / 2, drawY - h, w, h);
+    GDI::rect(drawX, drawY, w, h);
+    // GDI::rect(drawX - w / 2, drawY - h, w, h);
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     if (!anim)
         return;
@@ -267,10 +269,10 @@ Role::~Role()
     QTree::remove(id);
 }
 
-void Role::onCollision(Role *other, Direction dir)
+void Role::onCollision(Role *other, DirectType dir)
 {
 }
-void Role::onCollisioning(Role *other, Direction dir)
+void Role::onCollisioning(Role *other, DirectType dir)
 {
 }
 void Role::onCollisionOut(Role *other)

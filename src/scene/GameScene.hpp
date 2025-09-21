@@ -38,9 +38,9 @@ public:
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        
-        roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, 256, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, 280, 64, 64, 10, 8, 20, 32));
+
+        roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, GAME_LINE, 100, 64, 10, 8, 100, 32));
+        // roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, GAME_LINE - 32, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
     }
@@ -84,9 +84,9 @@ public:
         // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
         GDI::imageWorld(101, 0, 0);
         int count = 0;
-        for (auto &info : QTree::getCollision(role->id))
+        for (auto &info : QTree::getCollisions(role->id))
         {
-            GDI::text(std::to_wstring(info.otherId) + L"方向" + std::to_wstring(int(info.dir)), 320, count++ * 20);
+            GDI::text(L"方向" + std::to_wstring(int(info.second)), 320, count++ * 20);
         }
         count = 0;
         for (auto &role : roleVec)
@@ -98,7 +98,7 @@ public:
             }
         }
         GDI::text(L"渲染个数" + std::to_wstring(count), GAME_OFFSET_X + 80, 50);
-        GDI::text(L"ground" + std::to_wstring(role->ground) + L" line"+ std::to_wstring(role->line) + L" flag"+std::to_wstring(role->flag), GAME_OFFSET_X + 160, 50);
+        GDI::text(L"ground" + std::to_wstring(role->ground) + L" line" + std::to_wstring(role->line) + L" flag" + std::to_wstring(role->flag), GAME_OFFSET_X + 160, 50);
     }
 
     void renderGlobal() override

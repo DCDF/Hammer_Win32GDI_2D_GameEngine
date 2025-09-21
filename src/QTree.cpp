@@ -1,510 +1,312 @@
 ﻿#include "QTree.h"
-#include <iostream>
-#include <cmath>
-#include "Role.h"
+#include "Role.h" // 确保 cpp 文件包含 Role.h
+#include <algorithm>
 
-// 初始化静态成员
-std::unique_ptr<QuadNode> QTree::root = nullptr;
-std::unordered_map<int, std::unique_ptr<Object>> QTree::objects;
-std::unordered_map<int, std::unordered_map<int, Direction>> QTree::currentCollisions;
-std::unordered_map<int, std::unordered_map<int, Direction>> QTree::previousCollisions;
-std::function<void(int, int, Direction)> QTree::onCollision = nullptr;
-std::function<void(int, int)> QTree::onCollisionOut = nullptr;
-std::function<void(int, int, Direction)> QTree::onCollisioning = nullptr;
-std::unordered_set<int> QTree::objectsToCheck;
-bool QTree::initialized = false;
+// 初始化静态成员变量
+std::unique_ptr<Node> QTree::m_root = nullptr;
+std::unordered_map<int, ObjectData> QTree::m_allObjects;
+std::unordered_map<int, QTree::CollisionSet> QTree::m_currentCollisions;
+std::unordered_map<int, QTree::CollisionSet> QTree::m_previousCollisions;
 
-// QuadNode 实现
-QuadNode::QuadNode(int x, int y, int width, int height, int level, int maxLevels, int capacity)
-    : x(x), y(y), width(width), height(height), level(level), maxLevels(maxLevels), capacity(capacity), hasChildren(false)
+// --- Rect Methods ---
+bool Rect::intersects(const Rect &other) const
 {
+    return (x < other.x + other.w &&
+            x + w > other.x &&
+            y < other.y + other.h &&
+            y + h > other.y);
 }
 
-bool QuadNode::insert(Object *object)
+// --- Node Methods (无改动) ---
+Node::Node(int level, Rect bounds) : m_level(level), m_bounds(bounds)
 {
-    if (!contains(object))
+    for (int i = 0; i < 4; ++i)
     {
-        return false;
+        m_children[i] = nullptr;
     }
-
-    if (!hasChildren)
-    {
-        if (objects.size() < capacity || level >= maxLevels)
-        {
-            objects.push_back(object);
-            return true;
-        }
-
-        // 需要分裂
-        split();
-    }
-
-    // 尝试插入到子节点
-    int index = getIndex(object);
-    if (index != -1)
-    {
-        return children[index]->insert(object);
-    }
-
-    // 如果对象跨越多个子节点，留在当前节点
-    objects.push_back(object);
-    return true;
 }
 
-bool QuadNode::remove(int id)
+void Node::clear()
 {
-    // 在当前节点查找
-    auto it = std::find_if(objects.begin(), objects.end(),
-                           [id](Object *obj)
-                           { return obj->id == id; });
-
-    if (it != objects.end())
+    m_objects.clear();
+    for (int i = 0; i < 4; ++i)
     {
-        objects.erase(it);
-        return true;
-    }
-
-    // 在子节点中查找
-    if (hasChildren)
-    {
-        for (int i = 0; i < 4; i++)
+        if (m_children[i] != nullptr)
         {
-            if (children[i]->remove(id))
-            {
-                return true;
-            }
+            m_children[i]->clear();
+            m_children[i] = nullptr;
         }
     }
-
-    return false;
 }
 
-void QuadNode::update(Object *object, std::unordered_set<int> &movedObjects, bool &needsReinsertion)
+void Node::split()
 {
-    // 检查对象是否仍在当前节点范围内
-    if (this->contains(object))
+    int subWidth = m_bounds.w / 2;
+    int subHeight = m_bounds.h / 2;
+    int x = m_bounds.x;
+    int y = m_bounds.y;
+
+    m_children[0] = std::make_unique<Node>(m_level + 1, Rect{x + subWidth, y, subWidth, subHeight});
+    m_children[1] = std::make_unique<Node>(m_level + 1, Rect{x, y, subWidth, subHeight});
+    m_children[2] = std::make_unique<Node>(m_level + 1, Rect{x, y + subHeight, subWidth, subHeight});
+    m_children[3] = std::make_unique<Node>(m_level + 1, Rect{x + subWidth, y + subHeight, subWidth, subHeight});
+}
+
+int Node::getIndex(const Rect &rect)
+{
+    int index = -1;
+    double verticalMidpoint = m_bounds.x + (m_bounds.w / 2.0);
+    double horizontalMidpoint = m_bounds.y + (m_bounds.h / 2.0);
+
+    bool topQuadrant = (rect.y < horizontalMidpoint && rect.y + rect.h < horizontalMidpoint);
+    bool bottomQuadrant = (rect.y > horizontalMidpoint);
+
+    if (rect.x < verticalMidpoint && rect.x + rect.w < verticalMidpoint)
     {
-        // 如果在子节点中，更新子节点
-        if (this->hasChildren)
+        if (topQuadrant)
         {
-            int index = this->getIndex(object);
+            index = 1;
+        }
+        else if (bottomQuadrant)
+        {
+            index = 2;
+        }
+    }
+    else if (rect.x > verticalMidpoint)
+    {
+        if (topQuadrant)
+        {
+            index = 0;
+        }
+        else if (bottomQuadrant)
+        {
+            index = 3;
+        }
+    }
+    return index;
+}
+
+void Node::insert(ObjectData *obj)
+{
+    if (m_children[0] != nullptr)
+    {
+        int index = getIndex(obj->rect);
+        if (index != -1)
+        {
+            m_children[index]->insert(obj);
+            return;
+        }
+    }
+
+    m_objects.push_back(obj);
+
+    if (m_objects.size() > MAX_OBJECTS && m_level < MAX_LEVELS)
+    {
+        if (m_children[0] == nullptr)
+        {
+            split();
+        }
+        int i = 0;
+        while (i < m_objects.size())
+        {
+            int index = getIndex(m_objects[i]->rect);
             if (index != -1)
             {
-                this->children[index]->update(object, movedObjects, needsReinsertion);
-                return;
+                m_children[index]->insert(m_objects[i]);
+                m_objects.erase(m_objects.begin() + i);
             }
-        }
-
-        // 对象在当前节点，标记需要检查碰撞
-        movedObjects.insert(object->id);
-    }
-    else
-    {
-        // 对象已移出当前节点范围，需要重新插入到树中
-        this->remove(object->id);
-        needsReinsertion = true;
-    }
-}
-
-void QuadNode::clear()
-{
-    objects.clear();
-    if (hasChildren)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            children[i]->clear();
-        }
-        hasChildren = false;
-    }
-}
-
-void QuadNode::getPotentialCollisions(Object *object, std::unordered_set<int> &potentialCollisions)
-{
-    // 添加当前节点的对象
-    for (auto obj : objects)
-    {
-        if (obj->id != object->id)
-        {
-            potentialCollisions.insert(obj->id);
-        }
-    }
-
-    // 递归检查子节点
-    if (hasChildren)
-    {
-        int index = getIndex(object);
-        if (index != -1)
-        {
-            children[index]->getPotentialCollisions(object, potentialCollisions);
-        }
-        else
-        {
-            // 对象跨越多个子节点，检查所有相关子节点
-            for (int i = 0; i < 4; i++)
+            else
             {
-                if (children[i]->contains(object))
-                {
-                    children[i]->getPotentialCollisions(object, potentialCollisions);
-                }
+                i++;
             }
         }
     }
 }
 
-void QuadNode::getAllObjects(std::vector<Object *> &allObjects)
+void Node::retrieve(std::vector<ObjectData *> &returnObjects, const Rect &rect)
 {
-    allObjects.insert(allObjects.end(), objects.begin(), objects.end());
-
-    if (hasChildren)
+    int index = getIndex(rect);
+    if (index != -1 && m_children[0] != nullptr)
     {
-        for (int i = 0; i < 4; i++)
-        {
-            children[i]->getAllObjects(allObjects);
-        }
-    }
-}
-
-void QuadNode::split()
-{
-    if (hasChildren)
-        return;
-
-    int childWidth = width / 2;
-    int childHeight = height / 2;
-
-    children[0] = std::make_unique<QuadNode>(x, y, childWidth, childHeight, level + 1, maxLevels, capacity);
-    children[1] = std::make_unique<QuadNode>(x + childWidth, y, childWidth, childHeight, level + 1, maxLevels, capacity);
-    children[2] = std::make_unique<QuadNode>(x, y + childHeight, childWidth, childHeight, level + 1, maxLevels, capacity);
-    children[3] = std::make_unique<QuadNode>(x + childWidth, y + childHeight, childWidth, childHeight, level + 1, maxLevels, capacity);
-
-    hasChildren = true;
-
-    // 将当前节点的对象重新分配到子节点
-    std::vector<Object *> objectsToRedistribute;
-    objectsToRedistribute.swap(objects);
-
-    for (auto obj : objectsToRedistribute)
-    {
-        int index = getIndex(obj);
-        if (index != -1)
-        {
-            children[index]->insert(obj);
-        }
-        else
-        {
-            objects.push_back(obj);
-        }
-    }
-}
-
-bool QuadNode::contains(Object *object) const
-{
-    return object->x >= x &&
-           object->x + object->w <= x + width &&
-           object->y >= y &&
-           object->y + object->h <= y + height;
-}
-
-int QuadNode::getIndex(Object *object) const
-{
-    if (!hasChildren)
-        return -1;
-
-    int verticalMidpoint = x + width / 2;
-    int horizontalMidpoint = y + height / 2;
-
-    // 检查对象完全在哪个象限
-    bool topHalf = object->y < horizontalMidpoint && object->y + object->h < horizontalMidpoint;
-    bool bottomHalf = object->y > horizontalMidpoint;
-    bool leftHalf = object->x < verticalMidpoint && object->x + object->w < verticalMidpoint;
-    bool rightHalf = object->x > verticalMidpoint;
-
-    if (leftHalf)
-    {
-        if (topHalf)
-            return 0;
-        else if (bottomHalf)
-            return 2;
-    }
-    else if (rightHalf)
-    {
-        if (topHalf)
-            return 1;
-        else if (bottomHalf)
-            return 3;
+        m_children[index]->retrieve(returnObjects, rect);
     }
 
-    // 对象跨越多个象限
-    return -1;
+    returnObjects.insert(returnObjects.end(), m_objects.begin(), m_objects.end());
 }
 
-// QTree 静态方法实现
-void QTree::init(int width, int height, int maxLevels, int nodeCapacity)
+// --- QTree Methods ---
+void QTree::init(int worldX, int worldY, int worldWidth, int worldHeight)
 {
-    root = std::make_unique<QuadNode>(0, 0, width, height, 0, maxLevels, nodeCapacity);
-    clear();
-    initialized = true;
-}
-
-void QTree::insert(int id, int x, int y, int w, int h, Role *role)
-{
-    if (!initialized)
-        return;
-
-    auto newObj = std::make_unique<Object>(id, x, y, w, h, role);
-    if (root->insert(newObj.get()))
-    {
-        objects[id] = std::move(newObj);
-        objectsToCheck.insert(id);
-    }
-}
-
-void QTree::update(int id, int x, int y, int w, int h)
-{
-    if (!initialized)
-        return;
-
-    auto it = objects.find(id);
-    if (it != objects.end())
-    {
-        // 更新对象位置和尺寸
-        it->second->x = x;
-        it->second->y = y;
-        it->second->w = w;
-        it->second->h = h;
-
-        // 标记需要检查碰撞
-        objectsToCheck.insert(id);
-
-        // 更新四叉树中的对象位置
-        bool needsReinsertion = false;
-        root->update(it->second.get(), objectsToCheck, needsReinsertion);
-
-        // 如果需要重新插入，先删除再插入
-        if (needsReinsertion)
-        {
-            root->remove(id);
-            if (root->insert(it->second.get()))
-            {
-                objectsToCheck.insert(id);
-            }
-        }
-    }
-}
-
-void QTree::remove(int id)
-{
-    if (!initialized)
-        return;
-
-    auto it = objects.find(id);
-    if (it != objects.end())
-    {
-        root->remove(id);
-        objects.erase(it);
-
-        // 从碰撞状态中移除
-        currentCollisions.erase(id);
-        previousCollisions.erase(id);
-
-        // 从其他对象的碰撞状态中移除该对象
-        for (auto &pair : currentCollisions)
-        {
-            pair.second.erase(id);
-        }
-        for (auto &pair : previousCollisions)
-        {
-            pair.second.erase(id);
-        }
-    }
+    m_root = std::make_unique<Node>(0, Rect{worldX, worldY, worldWidth, worldHeight});
 }
 
 void QTree::clear()
 {
-    if (root)
+    if (m_root)
     {
-        root->clear();
+        m_root->clear();
     }
-    objects.clear();
-    currentCollisions.clear();
-    previousCollisions.clear();
-    objectsToCheck.clear();
+    m_allObjects.clear();
+    m_currentCollisions.clear();
+    m_previousCollisions.clear();
 }
 
-std::vector<CollisionInfo> QTree::getCollision(int id)
+void QTree::update(int roleId, int x, int y, int w, int h, Role *role)
 {
-    std::vector<CollisionInfo> result;
+    m_allObjects[roleId] = {roleId, {x, y, w, h}, role};
+}
 
-    if (!initialized)
-        return result;
+void QTree::remove(int roleId)
+{
+    m_allObjects.erase(roleId);
+    // 同时从碰撞状态中移除，确保能触发onCollisionOut
+    m_currentCollisions.erase(roleId);
+    m_previousCollisions.erase(roleId);
+}
 
-    auto it = currentCollisions.find(id);
-    if (it != currentCollisions.end())
+// --- 关键改动 ---
+// 实现重命名后的函数
+DirectType QTree::getCollisionDirection(const Rect &r1, const Rect &r2)
+{
+    float w = 0.5f * (r1.w + r2.w);
+    float h = 0.5f * (r1.h + r2.h);
+    float dx = (r1.x + r1.w / 2.0f) - (r2.x + r2.w / 2.0f);
+    float dy = (r1.y + r1.h / 2.0f) - (r2.y + r2.h / 2.0f);
+
+    float wy = w * dy;
+    float hx = h * dx;
+
+    if (wy > hx)
     {
-        for (const auto &collision : it->second)
+        if (wy > -hx)
         {
-            result.emplace_back(collision.first, collision.second);
+            return DirectType::TOP; // r1 is on top of r2
+        }
+        else
+        {
+            return DirectType::RIGHT; // r1 is to the right of r2
         }
     }
-
-    return result;
+    else
+    {
+        if (wy > -hx)
+        {
+            return DirectType::LEFT; // r1 is to the left of r2
+        }
+        else
+        {
+            return DirectType::BOTTOM; // r1 is below r2
+        }
+    }
 }
 
 void QTree::updateCollisions()
 {
-    if (!initialized)
+    if (!m_root)
         return;
 
-    // 交换当前和之前的碰撞状态
-    std::swap(previousCollisions, currentCollisions);
-    currentCollisions.clear();
+    // 1. 备份上一帧的碰撞状态
+    m_previousCollisions = m_currentCollisions;
+    m_currentCollisions.clear();
 
-    // 检查需要更新的对象的碰撞
-    std::unordered_set<int> processedObjects;
-    for (int id : objectsToCheck)
+    // 2. 清空并重建四叉树
+    m_root->clear();
+    for (auto &pair : m_allObjects)
     {
-        auto it = objects.find(id);
-        if (it == objects.end())
-            continue;
+        m_root->insert(&pair.second);
+    }
 
-        Object *obj = it->second.get();
-        processedObjects.insert(id);
+    // 3. 检测本帧的所有碰撞
+    std::vector<ObjectData *> candidates;
+    for (auto const &[idA, objA] : m_allObjects)
+    {
+        candidates.clear();
+        m_root->retrieve(candidates, objA.rect);
 
-        // 获取可能碰撞的对象
-        std::unordered_set<int> potentialCollisions;
-        root->getPotentialCollisions(obj, potentialCollisions);
-
-        // 检查实际碰撞
-        for (int otherId : potentialCollisions)
+        for (ObjectData *objB : candidates)
         {
-            auto otherIt = objects.find(otherId);
-            if (otherIt == objects.end())
+            if (objA.id == objB->id || objA.id > objB->id)
+            {
                 continue;
+            }
 
-            Object *other = otherIt->second.get();
-
-            // 检查AABB碰撞
-            if (obj->x < other->x + other->w &&
-                obj->x + obj->w > other->x &&
-                obj->y < other->y + other->h &&
-                obj->y + obj->h > other->y)
+            if (objA.rect.intersects(objB->rect))
             {
-
-                // 计算碰撞方向
-                Direction dir = calculateDirection(*obj, *other);
-                // 记录碰撞
-                currentCollisions[id][otherId] = dir;
-                currentCollisions[otherId][id] =
-                    (dir == Direction::UP) ? Direction::DOWN : (dir == Direction::DOWN) ? Direction::UP
-                                                           : (dir == Direction::LEFT)   ? Direction::RIGHT
-                                                           : (dir == Direction::RIGHT)  ? Direction::LEFT
-                                                                                        : Direction::NONE;
-
-                // 标记被动碰撞的物体也需要处理
-                processedObjects.insert(otherId);
-
-                // 检查碰撞状态变化并触发回调
-                auto prevIt = previousCollisions.find(id);
-                bool wasColliding = prevIt != previousCollisions.end() &&
-                                    prevIt->second.find(otherId) != prevIt->second.end();
-
-                if (!wasColliding)
-                {
-                    // 新的碰撞
-                    if (onCollision)
-                    {
-                        onCollision(id, otherId, dir);
-                    }
-                    obj->role->onCollision(other->role, dir);
-                    // other->role->onCollision(obj->role, dir);
-                }
-                else
-                {
-                    // 持续碰撞
-                    if (onCollisioning)
-                    {
-                        onCollisioning(id, otherId, dir);
-                    }
-                    obj->role->onCollisioning(other->role, dir);
-                    // other->role->onCollisioning(obj->role, dir);
-                }
+                m_currentCollisions[objA.id].insert(objB->id);
+                m_currentCollisions[objB->id].insert(objA.id);
             }
         }
     }
 
-    // 检查碰撞结束（需要检查所有之前有碰撞的对象）
-    for (const auto &pair : previousCollisions)
+    // 4. 比较新旧状态，触发回调
+    std::unordered_set<int> checkedIds;
+    auto process_id = [&](int id)
     {
-        int id = pair.first;
-        for (const auto &collision : pair.second)
+        if (checkedIds.count(id))
+            return;
+        checkedIds.insert(id);
+
+        if (m_allObjects.find(id) == m_allObjects.end()) return; // 对象可能已被移除
+        Role *roleA = m_allObjects.at(id).role;
+        const auto &rectA = m_allObjects.at(id).rect;
+
+        const auto prev_iter = m_previousCollisions.find(id);
+        const auto curr_iter = m_currentCollisions.find(id);
+
+        CollisionSet emptySet;
+        const CollisionSet &prevSet = (prev_iter != m_previousCollisions.end()) ? prev_iter->second : emptySet;
+        const CollisionSet &currSet = (curr_iter != m_currentCollisions.end()) ? curr_iter->second : emptySet;
+
+        for (int otherId : currSet)
         {
-            int otherId = collision.first;
-            // 如果当前帧没有这个碰撞，触发碰撞结束回调
-            auto currentIt = currentCollisions.find(id);
-            if (currentIt == currentCollisions.end() ||
-                currentIt->second.find(otherId) == currentIt->second.end())
+            if (m_allObjects.find(otherId) == m_allObjects.end()) continue;
+            Role *roleB = m_allObjects.at(otherId).role;
+            const auto &rectB = m_allObjects.at(otherId).rect;
+            // --- 关键改动 ---
+            // 调用重命名后的函数
+            DirectType dir = getCollisionDirection(rectA, rectB);
+
+            if (prevSet.find(otherId) == prevSet.end())
             {
-                // 碰撞结束
-                if (onCollisionOut)
-                {
-                    onCollisionOut(id, otherId);
-                }
-                auto it = objects.find(id);
-                if (it != objects.end())
-                {
-                    auto ot = objects.find(id);
-                    if (ot != objects.end())
-                    {
-                        it->second.get()->role->onCollisionOut(ot->second.get()->role);
-                        // ot->second.get()->role->onCollisionOut(it->second.get()->role);
-                    }
-                }
+                roleA->onCollision(roleB, dir);
+            }
+            else
+            {
+                roleA->onCollisioning(roleB, dir);
             }
         }
+
+        for (int otherId : prevSet)
+        {
+            if (m_allObjects.find(otherId) == m_allObjects.end()) continue;
+            if (currSet.find(otherId) == currSet.end())
+            {
+                Role *roleB = m_allObjects.at(otherId).role;
+                roleA->onCollisionOut(roleB);
+            }
+        }
+    };
+
+    for (auto const &[id, colls] : m_previousCollisions)
+        process_id(id);
+    for (auto const &[id, colls] : m_currentCollisions)
+        process_id(id);
+}
+
+std::vector<std::pair<Role *, DirectType>> QTree::getCollisions(int roleId)
+{
+    std::vector<std::pair<Role *, DirectType>> result;
+    if (m_currentCollisions.count(roleId))
+    {
+        const Rect &rectA = m_allObjects.at(roleId).rect;
+        for (int otherId : m_currentCollisions.at(roleId))
+        {
+            const Rect &rectB = m_allObjects.at(otherId).rect;
+            Role *roleB = m_allObjects.at(otherId).role;
+             // --- 关键改动 ---
+            // 调用重命名后的函数
+            result.push_back({roleB, getCollisionDirection(rectA, rectB)});
+        }
     }
-
-    objectsToCheck = processedObjects;
-}
-
-Direction QTree::calculateDirection(const Object &a, const Object &b)
-{
-    // 计算中心点
-    float aCenterX = static_cast<float>(a.x) + static_cast<float>(a.w) / 2.0f;
-    float aCenterY = static_cast<float>(a.y) + static_cast<float>(a.h) / 2.0f;
-    float bCenterX = static_cast<float>(b.x) + static_cast<float>(b.w) / 2.0f;
-    float bCenterY = static_cast<float>(b.y) + static_cast<float>(b.h) / 2.0f;
-
-    // 计算重叠量
-    float overlapLeft = static_cast<float>(a.x + a.w) - static_cast<float>(b.x);
-    float overlapRight = static_cast<float>(b.x + b.w) - static_cast<float>(a.x);
-    float overlapTop = static_cast<float>(a.y + a.h) - static_cast<float>(b.y);
-    float overlapBottom = static_cast<float>(b.y + b.h) - static_cast<float>(a.y);
-
-    // 找出最小重叠方向
-    float minOverlap = std::min({overlapLeft, overlapRight, overlapTop, overlapBottom});
-
-    if (minOverlap == overlapLeft)
-        return Direction::LEFT;
-    else if (minOverlap == overlapRight)
-        return Direction::RIGHT;
-    else if (minOverlap == overlapTop)
-        return Direction::UP;
-    else
-        return Direction::DOWN;
-}
-
-void QTree::setOnCollision(std::function<void(int, int, Direction)> callback)
-{
-    onCollision = callback;
-}
-
-void QTree::setOnCollisionOut(std::function<void(int, int)> callback)
-{
-    onCollisionOut = callback;
-}
-
-void QTree::setOnCollisioning(std::function<void(int, int, Direction)> callback)
-{
-    onCollisioning = callback;
+    return result;
 }

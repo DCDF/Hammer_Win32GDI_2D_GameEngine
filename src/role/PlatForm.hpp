@@ -10,32 +10,25 @@ public:
         gravity = 0;
     }
 
-    virtual void onCollision(Role *other, Direction dir) override
+    virtual void onCollision(Role *other, DirectType dir) override
     {
-        if (int(dir) == int(Direction::DOWN) && other->upSpeed <= 0)
-        { 
-        other->y = y - other->h;
-        other->line = y - other->h;
-        other->ground = true;
-        other->downSpeed = 0;
-        other->upSpeed = 0;
+        if (dir == DirectType::TOP && other->y <= y - h + 3)
+        {
+            other->otherLine = y - h;
         }
         other->flag += 1;
     }
-    virtual void onCollisioning(Role *other, Direction dir) override
+    virtual void onCollisioning(Role *other, DirectType dir) override
     {
-        if (int(dir) == int(Direction::DOWN)&& other->upSpeed <= 0)
-        { 
-        other->y = y - other->h;
-        other->line = y - other->h;
-        other->ground = true;
-        other->downSpeed = 0;
-        other->upSpeed = 0;
+        if (dir == DirectType::TOP && other->y <= y - h + 3)
+        {
+            other->otherLine = y - h;
         }
     }
     virtual void onCollisionOut(Role *other) override
     {
-       other->flag -= 1;
-    // 重置为默认地面线
+        other->flag -= 1;
+        // 重置为默认地面线
+        other->otherLine = 0;
     }
 };

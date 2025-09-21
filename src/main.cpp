@@ -37,7 +37,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     bool running = true;
     std::wstring fpsText = L"0";
 
-    QTree::init(2048, 2048);
+    QTree::init(0, 0, 2048, 2048);
     // 设置碰撞回调
 
     Scene::change(std::make_unique<StartScene>());
@@ -73,7 +73,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         Scene::curScene->renderGlobal();
         GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
-
     }
 
     GDI::end();
