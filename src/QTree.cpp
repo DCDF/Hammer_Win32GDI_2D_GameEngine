@@ -1,6 +1,7 @@
 ﻿#include "QTree.h"
 #include <iostream>
 #include <cmath>
+#include "Role.h"
 
 // 初始化静态成员
 std::unique_ptr<QuadNode> QTree::root = nullptr;
@@ -246,12 +247,12 @@ void QTree::init(int width, int height, int maxLevels, int nodeCapacity)
     initialized = true;
 }
 
-void QTree::insert(int id, int x, int y, int w, int h)
+void QTree::insert(int id, int x, int y, int w, int h, Role *role)
 {
     if (!initialized)
         return;
 
-    auto newObj = std::make_unique<Object>(id, x, y, w, h);
+    auto newObj = std::make_unique<Object>(id, x, y, w, h, role);
     if (root->insert(newObj.get()))
     {
         objects[id] = std::move(newObj);
@@ -392,7 +393,21 @@ void QTree::updateCollisions()
 
                 // 计算碰撞方向
                 Direction dir = calculateDirection(*obj, *other);
-
+                Direction otherDir;
+                switch (dir)
+                {
+                case Direction::UP:
+                    otherDir = Direction::DOWN;
+                    break;
+                case Direction::DOWN:
+                    otherDir = Direction::UP;
+                    break;
+                case Direction::LEFT:
+                    otherDir = Direction::RIGHT;
+                    break;
+                case Direction::RIGHT:
+                    otherDir = Direction::LEFT;
+                }
                 // 记录碰撞
                 currentCollisions[id][otherId] = dir;
                 currentCollisions[otherId][id] =
@@ -416,6 +431,8 @@ void QTree::updateCollisions()
                     {
                         onCollision(id, otherId, dir);
                     }
+                    obj->role->onCollision(other->role, dir);
+                    // other->role->onCollision(obj->role, dir);
                 }
                 else
                 {
@@ -424,6 +441,8 @@ void QTree::updateCollisions()
                     {
                         onCollisioning(id, otherId, dir);
                     }
+                    obj->role->onCollisioning(other->role, dir);
+                    // other->role->onCollisioning(obj->role, dir);
                 }
             }
         }
@@ -436,7 +455,6 @@ void QTree::updateCollisions()
         for (const auto &collision : pair.second)
         {
             int otherId = collision.first;
-
             // 如果当前帧没有这个碰撞，触发碰撞结束回调
             auto currentIt = currentCollisions.find(id);
             if (currentIt == currentCollisions.end() ||
@@ -446,6 +464,16 @@ void QTree::updateCollisions()
                 if (onCollisionOut)
                 {
                     onCollisionOut(id, otherId);
+                }
+                auto it = objects.find(id);
+                if (it != objects.end())
+                {
+                    auto ot = objects.find(id);
+                    if (ot != objects.end())
+                    {
+                        it->second.get()->role->onCollisionOut(ot->second.get()->role);
+                        // ot->second.get()->role->onCollisionOut(it->second.get()->role);
+                    }
                 }
             }
         }

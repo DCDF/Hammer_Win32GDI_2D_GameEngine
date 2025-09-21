@@ -10,6 +10,7 @@
 #include "../Input.h"
 #include "../QTree.h"
 #include "../role/LaoA.hpp"
+#include "../role/PlatForm.hpp"
 
 extern int GAME_WIDTH;
 extern int GAME_HEIGHT;
@@ -32,11 +33,14 @@ public:
 
         roleVec.emplace_back(std::make_unique<LaoA>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 128, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 192, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // roleVec.emplace_back(std::make_unique<LaoA>(201, 128, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // roleVec.emplace_back(std::make_unique<LaoA>(201, 192, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // roleVec.emplace_back(std::make_unique<LaoA>(201, 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        
+        roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, 300, 64, 64, 10, 8, 20, 32));
+
         Camera::setTarget(role);
     }
 
@@ -69,15 +73,22 @@ public:
         // }
         // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
         GDI::imageWorld(101, 0, 0);
-        // int count = 0;
-        // for (auto &info : QTree::getCollision(role->id))
-        // {
-        //     GDI::text(std::to_wstring(info.otherId) + L"->" + std::to_wstring(int(info.dir)), 320, count++ * 20);
-        // }
+        int count = 0;
+        for (auto &info : QTree::getCollision(role->id))
+        {
+            GDI::text(std::to_wstring(info.otherId) + L"方向" + std::to_wstring(int(info.dir)), 320, count++ * 20);
+        }
+        count = 0;
         for (auto &role : roleVec)
         {
             role->render();
+            if (!role->outSide)
+            {
+                count++;
+            }
         }
+        GDI::text(L"渲染个数" + std::to_wstring(count), GAME_OFFSET_X + 80, 50);
+        GDI::text(L"ground" + std::to_wstring(role->ground) + L" line"+ std::to_wstring(role->line) + L" flag"+std::to_wstring(role->flag), GAME_OFFSET_X + 160, 50);
     }
 
     void renderGlobal() override
@@ -89,14 +100,18 @@ public:
         if (Input::IsKeyDown('A'))
         {
             role->handVec->k -= 100;
-            // role->x -= 100 * deltaTime;
-            // QTree::update(role->id, role->x, role->y, role->w, role->h);
         }
         else if (Input::IsKeyDown('D'))
         {
             role->handVec->k += 100;
-            // role->x += 100 * deltaTime;
-            // QTree::update(role->id, role->x, role->y, role->w, role->h);
+        }
+        else if (Input::IsKeyDown('F'))
+        {
+            GAME_LINE = 50;
+        }
+        else if (Input::IsKeyDown('G'))
+        {
+            GAME_LINE = 100;
         }
 
         if (role->ground && Input::IsKeyDown(' '))

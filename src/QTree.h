@@ -7,7 +7,6 @@
 #include <functional>
 #include <memory>
 #include <algorithm>
-
 // 碰撞方向枚举
 enum class Direction
 {
@@ -17,7 +16,7 @@ enum class Direction
     LEFT,
     RIGHT
 };
-
+class Role;
 // 碰撞信息结构
 struct CollisionInfo
 {
@@ -32,9 +31,10 @@ struct Object
 {
     int id;
     int x, y, w, h;
+    Role *role;
 
-    Object(int id, int x, int y, int w, int h)
-        : id(id), x(x), y(y), w(w), h(h) {}
+    Object(int id, int x, int y, int w, int h, Role *role)
+        : id(id), x(x), y(y), w(w), h(h), role(role) {}
 };
 
 // 四叉树节点
@@ -74,7 +74,7 @@ public:
     static void init(int width, int height, int maxLevels = 5, int nodeCapacity = 4);
 
     // 核心接口
-    static void insert(int id, int x, int y, int w, int h);
+    static void insert(int id, int x, int y, int w, int h, Role *role = nullptr);
     static void update(int id, int x, int y, int w, int h);
     static void remove(int id);
     static void clear();

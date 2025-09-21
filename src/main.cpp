@@ -60,6 +60,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
             tickCount = 0;
         }
         Input::Update();
+        QTree::updateCollisions();
         Scene::curScene->tick(dt);
         GDI::begin(dt);
         GAME_OFFSET_X = Camera::getOffsetX();
@@ -73,8 +74,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
 
-        // 更新碰撞状态（在每帧结束时调用）
-        QTree::updateCollisions();
     }
 
     GDI::end();

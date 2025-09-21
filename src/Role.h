@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "PropType.h"
 #include "Anim.h"
+#include "QTree.h"
 extern int GAME_OFFSET_X;
 extern int GAME_LINE;
 extern int WORLD_LEFT;
@@ -17,7 +18,6 @@ namespace Gdiplus
     class Bitmap;
 } // forward-declare GDI+ Bitmap
 class KV;
-
 class Role
 {
 public:
@@ -35,6 +35,8 @@ public:
     int w;
     int h;
 
+    int flag = 0;
+    int line;
     int resId;
     // sprite sheet layout
     int imgCol;
@@ -60,6 +62,7 @@ public:
     std::unique_ptr<KV> otherVec;
     std::unique_ptr<KV> totalVec;
     std::unique_ptr<KV> preVec;
+    std::unique_ptr<KV> prePos;
 
     std::wstring name;
     // pointer to image wrapper (owns the texture elsewhere)
@@ -87,5 +90,11 @@ public:
     virtual void hurt(Damage *dmg);
 
     virtual bool hasCollision();
-    void checkTickState();
+    virtual void checkTickState();
+
+    virtual void onCollision(Role *other, Direction dir);
+
+    virtual void onCollisioning(Role *other, Direction dir);
+
+    virtual void onCollisionOut(Role *other);
 };
