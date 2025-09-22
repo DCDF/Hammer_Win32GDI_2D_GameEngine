@@ -40,6 +40,16 @@ public:
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
 
         roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, GAME_LINE, 100, 64, 10, 8, 100, 32));
+        int count = 0;
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         // roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, GAME_LINE - 32, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
@@ -98,6 +108,7 @@ public:
             }
         }
         GDI::text(L"渲染个数" + std::to_wstring(count), GAME_OFFSET_X + 80, 50);
+        GDI::text(L"lockVec" + std::to_wstring(role->lockHandVec->k), GAME_OFFSET_X + 80, 80);
         GDI::text(L"ground" + std::to_wstring(role->ground) + L" line" + std::to_wstring(role->line) + L" flag" + std::to_wstring(role->flag), GAME_OFFSET_X + 160, 50);
     }
 

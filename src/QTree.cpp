@@ -11,10 +11,10 @@ std::unordered_map<int, QTree::CollisionSet> QTree::m_previousCollisions;
 // --- Rect Methods ---
 bool Rect::intersects(const Rect &other) const
 {
-    return (x < other.x + other.w &&
-            x + w > other.x &&
-            y < other.y + other.h &&
-            y + h > other.y);
+    return (x <= other.x + other.w &&
+            x + w >= other.x &&
+            y <= other.y + other.h &&
+            y + h >= other.y);
 }
 
 // --- Node Methods (无改动) ---

@@ -59,8 +59,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
             fps = tickCount;
             tickCount = 0;
         }
+        if(dt > 0.33){
+            dt = 0.33;
+        }
         Input::Update();
-        QTree::updateCollisions();
         Scene::curScene->tick(dt);
         GDI::begin(dt);
         GAME_OFFSET_X = Camera::getOffsetX();
@@ -68,11 +70,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::setCamera(GAME_OFFSET_X, GAME_OFFSET_Y);
         Scene::curScene->render();
         GDI::tick(dt);
-
+        
         GDI::setCamera(0, 0);
         Scene::curScene->renderGlobal();
         GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
+        QTree::updateCollisions();
     }
 
     GDI::end();

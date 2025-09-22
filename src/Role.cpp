@@ -44,6 +44,7 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
 {
     anim = std::make_unique<Anim>();
     handVec = std::make_unique<KV>();
+    lockHandVec = std::make_unique<KV>();
     otherVec = std::make_unique<KV>();
     totalVec = std::make_unique<KV>();
     preVec = std::make_unique<KV>();
@@ -98,10 +99,19 @@ void Role::tick(double deltaTime)
             }
         }
     }
-
-    // 合并输入向量
-    totalVec->k = handVec->k + otherVec->k;
-    totalVec->v = handVec->v + otherVec->v;
+    bool ignoreHandVec = (lockHandVec->k > 0 && handVec->k > 0) || (lockHandVec->k < 0 && handVec->k < 0);
+    if (ignoreHandVec)
+    {
+        // 合并输入向量
+        totalVec->k = otherVec->k;
+        totalVec->v = otherVec->v;
+    }
+    else
+    {
+        // 合并输入向量
+        totalVec->k = handVec->k + otherVec->k;
+        totalVec->v = handVec->v + otherVec->v;
+    }
 
     if (idle)
     {

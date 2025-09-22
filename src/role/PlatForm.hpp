@@ -16,6 +16,14 @@ public:
         {
             other->otherLine = y - h;
         }
+        else if (dir == DirectType::LEFT)
+        {
+            other->lockHandVec->k = 1;
+        }
+        else if (dir == DirectType::RIGHT)
+        {
+            other->lockHandVec->k = -1;
+        }
         other->flag += 1;
     }
     virtual void onCollisioning(Role *other, DirectType dir) override
@@ -28,7 +36,7 @@ public:
     virtual void onCollisionOut(Role *other) override
     {
         other->flag -= 1;
-        // 重置为默认地面线
         other->otherLine = 0;
+        other->lockHandVec->clear();
     }
 };

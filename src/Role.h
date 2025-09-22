@@ -44,7 +44,7 @@ public:
     int h;
 
     int flag = 0;
-    int otherLine = 0;
+    double otherLine = 0;
     int line = 0;
     int resId;
     // sprite sheet layout
@@ -68,6 +68,7 @@ public:
     double downSpeed = 0;
     // movement / input vectors (KV is your small struct)
     std::unique_ptr<KV> handVec;
+    std::unique_ptr<KV> lockHandVec;
     std::unique_ptr<KV> otherVec;
     std::unique_ptr<KV> totalVec;
     std::unique_ptr<KV> preVec;
