@@ -38,13 +38,13 @@ public:
 
         text = std::move(new std::wstring(L"press any key!"));
         hitArr.clear();
-        hitArr.push_back(3);
-        hitArr.push_back(4.4);
-        hitArr.push_back(4.6);
-        hitArr.push_back(6);
-        hitArr.push_back(7.2);
+        hitArr.push_back(2.9);
+        hitArr.push_back(4.3);
+        hitArr.push_back(4.5);
+        hitArr.push_back(5.9);
+        hitArr.push_back(7.1);
+        hitArr.push_back(7.3);
         hitArr.push_back(7.4);
-        hitArr.push_back(7.6);
         hitArr.push_back(45);
         pass = 0.0;
     }

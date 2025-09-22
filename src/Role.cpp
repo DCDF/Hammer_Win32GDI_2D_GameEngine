@@ -49,7 +49,7 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
     preVec = std::make_unique<KV>();
     prePos = std::make_unique<KV>();
     line = GAME_LINE;
-    QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h, this);
+    QTree::update(id, static_cast<int>(x - w / 2), static_cast<int>(y - h), w, h, this);
 }
 
 void Role::setFace(bool right)
@@ -140,7 +140,7 @@ void Role::tick(double deltaTime)
     }
     if (change && hasCollision())
     {
-        QTree::update(id, static_cast<int>(x), static_cast<int>(y), w, h, this);
+        QTree::update(id, static_cast<int>(x - w / 2), static_cast<int>(y - h), w, h, this);
     }
     if (y >= line)
     {
@@ -180,8 +180,8 @@ void Role::render()
     // 计算绘制位置
     int drawX = static_cast<int>(x);
     int drawY = static_cast<int>(y);
-    GDI::rect(drawX, drawY, w, h);
-    // GDI::rect(drawX - w / 2, drawY - h, w, h);
+    // GDI::rect(drawX, drawY, w, h);
+    GDI::rect(drawX - w / 2, drawY - h, w, h);
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     if (!anim)
         return;
