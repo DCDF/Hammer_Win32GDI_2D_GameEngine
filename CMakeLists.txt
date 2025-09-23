@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28)
 
 get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${PROJECT_NAME} LANGUAGES CXX)
@@ -20,7 +20,16 @@ file(GLOB_RECURSE ALL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     "src/*.ixx"
 )
 # 可执行文件
-add_executable(${PROJECT_NAME} ${ALL_SOURCES})
+add_executable(${PROJECT_NAME} WIN32 ${ALL_SOURCES})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    mfplat.lib
+    mfreadwrite.lib
+    mfuuid.lib
+    shlwapi.lib
+    xaudio2.lib
+    ole32.lib
+)
 
 
 target_compile_options(${PROJECT_NAME} PRIVATE
@@ -30,3 +39,26 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 target_link_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Release>:/LTCG /INCREMENTAL:NO /OPT:REF /OPT:ICF>
 )
+
+# 资源复制
+if(EXISTS "${CMAKE_SOURCE_DIR}/res")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying res/ -> $<TARGET_FILE_DIR:${PROJECT_NAME}>/res"
+        COMMAND ${CMAKE_COMMAND} -E remove_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/res"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/res" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/res"
+    )
+else()
+    message(STATUS "res/ not found in project root; skipping copy of resources.")
+endif()
+
+# UPX 压缩
+set(UPX_PATH "${CMAKE_SOURCE_DIR}/upx.exe" CACHE PATH "UPX 可执行文件路径（可选）")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "UPX found at ${UPX_PATH} -> ${PROJECT_NAME} UPX will run only for Release builds"
+    COMMAND $<$<CONFIG:Release>:${UPX_PATH}> $<$<CONFIG:Release>:--best> $<$<CONFIG:Release>:--lzma> $<$<CONFIG:Release>:--force> $<$<CONFIG:Release>:$<TARGET_FILE:${PROJECT_NAME}>>
+    COMMENT "Compressing exe with UPX (only for Release)"
+)
+
+# 调试信息
+message(STATUS "Project: ${PROJECT_NAME}")
+message(STATUS "Output: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
