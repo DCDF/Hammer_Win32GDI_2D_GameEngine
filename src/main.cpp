@@ -1,84 +1,57 @@
-﻿#include "PC.h"
-#include "GDI.h"
-// #include "Audio.h"
-#include <chrono>
-#include "Camera.h"
-#include "Scene.h"
-#include "scene/StartScene.hpp"
-#include "scene/GameScene.hpp"
-#include "Input.h"
-#include "QTree.h"
-#include <iostream>
+﻿#include <iostream>
 
-extern int GAME_WIDTH;
-extern int GAME_HEIGHT;
-extern int GAME_LINE;
-extern int GAME_OFFSET_X;
-extern int GAME_OFFSET_Y;
+#include "tree/quadtree/QuadTree.h"
 
-// 使用 steady_clock（单调时钟，不受系统时间调整影响）
-using Clock = std::chrono::high_resolution_clock; // 或 steady_clock
-using TimePoint = std::chrono::time_point<Clock>;
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
+int main()
 {
-    PC pc(hInstance, GAME_WIDTH, GAME_HEIGHT, "Hammer");
-    pc.show();
+    // 创建一个覆盖区域从(0,0)到(100,100)，节点容量为4的四叉树
+    QuadTree qt(Rect(0, 0, 100, 100), 4);
 
-    Input::Initialize(pc.window());
-    GDI::init(pc.window());
-    // Audio_bg(301);
+    // 插入一些点
+    std::vector<Point> pointsToInsert = {
+        Point(10, 10), Point(20, 20), Point(30, 30), Point(40, 40),
+        Point(50, 50), Point(60, 60), Point(70, 70), Point(80, 80)};
 
-    TimePoint prev_time = Clock::now();
-
-    int tickCount = 0;
-    int fps = 0;
-    float secondsFps = 1.0;
-    bool running = true;
-    std::wstring fpsText = L"0";
-
-    QTree::init(0, 0, 2048, 2048);
-    // 设置碰撞回调
-
-    Scene::change(std::make_unique<StartScene>());
-    while (running)
+    std::cout << "Inserting points:" << std::endl;
+    for (auto &p : pointsToInsert)
     {
-        if (!pc.tick())
-            break;
-        TimePoint current_time = Clock::now();
-        // 计算帧间隔 dt（秒，浮点型）
-        float dt = std::chrono::duration<float>(current_time - prev_time).count();
-        prev_time = current_time;
-
-        secondsFps -= dt;
-        tickCount++;
-        if (secondsFps <= 0)
+        if (qt.insert(p))
         {
-            secondsFps = 1;
-            fpsText = L" FPS:" + std::to_wstring(fps);
-            fps = tickCount;
-            tickCount = 0;
+            std::cout << "Point (" << p.x << ", " << p.y << ") inserted." << std::endl;
         }
-        if(dt > 0.33){
-            dt = 0.33;
-        }
-        Input::Update();
-        Scene::curScene->tick(dt);
-        GDI::begin(dt);
-        GAME_OFFSET_X = Camera::getOffsetX();
-        GAME_OFFSET_Y = Camera::getOffsetY();
-        GDI::setCamera(GAME_OFFSET_X, GAME_OFFSET_Y);
-        Scene::curScene->render();
-        GDI::tick(dt);
-        
-        GDI::setCamera(0, 0);
-        Scene::curScene->renderGlobal();
-        GDI::text(fpsText, 10, 10);
-        GDI::flush(dt);
-        QTree::updateCollisions();
     }
 
-    GDI::end();
-    Input::Shutdown();
+    // 查询所有点
+    Rect entireTree(0, 0, 100, 100);
+    auto allPoints = qt.query(entireTree);
+    std::cout << "\nPoints in tree before deletion: " << allPoints.size() << std::endl;
+    for (const auto &p : allPoints)
+    {
+        std::cout << "(" << p.x << ", " << p.y << ") ";
+    }
+    std::cout << std::endl;
+
+    // 删除一个点，例如 (30, 30)
+    Point pointToRemove(30, 30);
+    std::cout << "\nAttempting to remove point (" << pointToRemove.x << ", " << pointToRemove.y << ")." << std::endl;
+    bool removalStatus = qt.remove(pointToRemove);
+    if (removalStatus)
+    {
+        std::cout << "Point removed successfully." << std::endl;
+    }
+    else
+    {
+        std::cout << "Point not found or could not be removed." << std::endl;
+    }
+
+    // 再次查询所有点，确认删除
+    allPoints = qt.query(entireTree);
+    std::cout << "\nPoints in tree after deletion: " << allPoints.size() << std::endl;
+    for (const auto &p : allPoints)
+    {
+        std::cout << "(" << p.x << ", " << p.y << ") ";
+    }
+    std::cout << std::endl;
+
     return 0;
 }
