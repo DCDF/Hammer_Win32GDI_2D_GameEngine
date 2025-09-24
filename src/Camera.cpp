@@ -28,7 +28,7 @@ int Camera::getOffsetX()
     {
         tx = WORLD_RIGHT - GAME_WIDTH;
     }
-    return tx;
+    return static_cast<int>(tx);
 } 
 
 int Camera::getOffsetY()

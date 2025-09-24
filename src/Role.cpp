@@ -78,7 +78,7 @@ void Role::tick(double deltaTime)
     line = GAME_LINE;
     if (otherLine != 0)
     {
-        line = otherLine;
+        line = static_cast<int>(otherLine);
     }
     if (gravity > 0)
     {
@@ -153,10 +153,10 @@ void Role::tick(double deltaTime)
     }
     if (change && hasCollision())
     {
-        rect->x = static_cast<int>(x - w / 2);
-        rect->y = static_cast<int>(y - h);
-        rect->w = w;
-        rect->h = h;
+        rect->x = static_cast<float>(x - w / 2);
+        rect->y = static_cast<float>(y - h);
+        rect->w = static_cast<float>(w);
+        rect->h = static_cast<float>(h);
         QuadTree::WORLD->update(rect.get());
     }
     if (y >= line)
