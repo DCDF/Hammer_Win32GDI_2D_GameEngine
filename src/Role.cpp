@@ -51,7 +51,7 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
     prePos = std::make_unique<KV>();
     line = GAME_LINE;
 
-    rect = std::make_unique<QuadTreeRect>(static_cast<int>(x - w / 2), static_cast<int>(y - h), w, h, id, this);
+    rect = std::make_unique<QuadTreeRect>(static_cast<float>(x - w / 2), static_cast<float>(y - h), static_cast<float>(w), static_cast<float>(h), id, this);
     setupCollisionCallbacks();
     QuadTree::WORLD->insert(rect.get());
 }
