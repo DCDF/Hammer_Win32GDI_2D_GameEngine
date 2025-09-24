@@ -59,7 +59,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         }
         if (dt > 0.33)
         {
-            dt = static_cast<float>(0.33);
+            dt = 0.33;
         }
         Input::Update();
         Scene::curScene->tick(dt);

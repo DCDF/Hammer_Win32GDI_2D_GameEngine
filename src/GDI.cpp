@@ -254,7 +254,7 @@ void GDI::drawImageFast(int resId, int x, int y, int w, int h,
 
     for (int j = clipY1; j < clipY2; ++j)
     {
-        int current_srcY = static_cast<int>(srcY_fixed >> FRACT_BITS);
+        int current_srcY = srcY + (srcY_fixed >> FRACT_BITS);
 
         const uint32_t *srcRowBase = img->pixels.get() + min(imgH - 1, max(0, current_srcY)) * (size_t)imgW;
         uint64_t srcX_fixed = srcX_fixed_start;
@@ -269,14 +269,14 @@ void GDI::drawImageFast(int resId, int x, int y, int w, int h,
                 // 优化: 1:1无缩放绘制，直接 memcpy
                 if (w == srcW && h == srcH)
                 {
-                    int srcStart = static_cast<int>(srcX + (srcX_fixed_start >> FRACT_BITS));
+                    int srcStart = srcX + (srcX_fixed_start >> FRACT_BITS);
                     memcpy(destPtr, srcRowBase + srcStart, (size_t)(clipX2 - clipX1) * 4);
                 }
                 else
                 {
                     for (int i = clipX1; i < clipX2; ++i)
                     {
-                        int sx = static_cast<int>(srcX + (srcX_fixed >> FRACT_BITS));
+                        int sx = srcX + (srcX_fixed >> FRACT_BITS);
                         *destPtr++ = srcRowBase[min(imgW - 1, max(0, sx))];
                         srcX_fixed += stepX_fixed;
                     }
@@ -286,7 +286,7 @@ void GDI::drawImageFast(int resId, int x, int y, int w, int h,
             { // flip
                 for (int i = clipX1; i < clipX2; ++i)
                 {
-                    int sx = static_cast<int>(srcX + srcW - 1 - (srcX_fixed >> FRACT_BITS));
+                    int sx = srcX + srcW - 1 - (srcX_fixed >> FRACT_BITS);
                     *destPtr++ = srcRowBase[min(imgW - 1, max(0, sx))];
                     srcX_fixed += stepX_fixed;
                 }
@@ -298,7 +298,7 @@ void GDI::drawImageFast(int resId, int x, int y, int w, int h,
             {
                 for (int i = clipX1; i < clipX2; ++i)
                 {
-                    int sx = static_cast<int>(srcX + (srcX_fixed >> FRACT_BITS));
+                    int sx = srcX + (srcX_fixed >> FRACT_BITS);
                     *destPtr = AlphaBlendPixel_Premultiplied(*destPtr, srcRowBase[min(imgW - 1, max(0, sx))]);
                     destPtr++;
                     srcX_fixed += stepX_fixed;
@@ -308,7 +308,7 @@ void GDI::drawImageFast(int resId, int x, int y, int w, int h,
             { // flip
                 for (int i = clipX1; i < clipX2; ++i)
                 {
-                    int sx = static_cast<int>(srcX + srcW - 1 - (srcX_fixed >> FRACT_BITS));
+                    int sx = srcX + srcW - 1 - (srcX_fixed >> FRACT_BITS);
                     *destPtr = AlphaBlendPixel_Premultiplied(*destPtr, srcRowBase[min(imgW - 1, max(0, sx))]);
                     destPtr++;
                     srcX_fixed += stepX_fixed;
