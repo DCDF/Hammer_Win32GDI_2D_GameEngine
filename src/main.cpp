@@ -34,7 +34,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     bool running = true;
     std::wstring fpsText = L"0";
 
-    QuadTree::WORLD = std::make_unique<QuadTree>(QuadTreeRect(0, 0, 2048, 2048), 4);
+    QuadTree::WORLD = std::make_unique<QuadTree>(QuadTreeRect(0, 0, WORLD_RIGHT, GAME_HEIGHT), 4);
 
     // 设置碰撞回调
 

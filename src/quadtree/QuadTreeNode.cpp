@@ -44,6 +44,18 @@ bool QuadTreeNode::insert(QuadTreeRect *val)
         vals.clear();
         return true;
     }
+    else
+    {
+        // 以分裂,则由子节点消化
+        if (nw->insert(val))
+            return true;
+        if (ne->insert(val))
+            return true;
+        if (sw->insert(val))
+            return true;
+        if (se->insert(val))
+            return true;
+    }
     // 如果点未能插入任何子节点（理论上不应发生给定点在边界内）
     return false;
 }

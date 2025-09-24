@@ -114,6 +114,8 @@ void QuadTree::tick(double dt)
         // 碰撞失效检查
         for (auto other : preCollision)
         {
+            if (other == val)
+                continue;
             if (newCollisions.find(other) == newCollisions.end())
             {
                 val->onCollisionOut(other);

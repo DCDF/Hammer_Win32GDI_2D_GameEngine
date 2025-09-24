@@ -49,6 +49,15 @@ public:
         roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         // roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, GAME_LINE - 32, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
