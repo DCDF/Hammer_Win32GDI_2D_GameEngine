@@ -9,34 +9,4 @@ public:
         name = L"板板";
         gravity = 0;
     }
-
-    virtual void onCollision(Role *other, DirectType dir) override
-    {
-        if (dir == DirectType::TOP && other->y <= y - h + 3)
-        {
-            other->otherLine = y - h;
-        }
-        else if (dir == DirectType::LEFT)
-        {
-            other->lockHandVec->k = 1;
-        }
-        else if (dir == DirectType::RIGHT)
-        {
-            other->lockHandVec->k = -1;
-        }
-        other->flag += 1;
-    }
-    virtual void onCollisioning(Role *other, DirectType dir) override
-    {
-        if (dir == DirectType::TOP && other->y <= y - h + 3)
-        {
-            other->otherLine = y - h;
-        }
-    }
-    virtual void onCollisionOut(Role *other) override
-    {
-        other->flag -= 1;
-        other->otherLine = 0;
-        other->lockHandVec->clear();
-    }
 };

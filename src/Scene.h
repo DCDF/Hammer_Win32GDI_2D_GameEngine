@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <string>
 #include "GDI.h"
-#include "QTree.h"
+#include "quadtree/QuadTree.h"
 
 class Scene
 {
@@ -20,10 +20,11 @@ public:
         {
             curScene->exit();
         }
-        QTree::clear();
-        newScene->beforeEnter();
-        newScene->enter();
-
+        if (newScene != nullptr)
+        {
+            newScene->beforeEnter();
+            newScene->enter();
+        }
         // 重置 curScene：释放当前管理的对象，接管新对象的所有权。
         curScene = std::move(newScene);
     }
@@ -48,8 +49,8 @@ public:
         return nullptr;
     }
 
-    virtual void onKeyDown(int key){}
-    virtual void onKeyUp(int key){}
+    virtual void onKeyDown(int key) {}
+    virtual void onKeyUp(int key) {}
 
     virtual void beforeEnter() {}
 

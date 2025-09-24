@@ -9,7 +9,6 @@
 #include <chrono>
 #include <mutex>
 #include "PropModel.h"
-#include "QTree.h"
 
 int Role::ROLE_ID = 0;
 
@@ -40,6 +39,7 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
       resId(resId),
       anim(nullptr),
       name(L""),
+      rect(nullptr),
       id(ROLE_ID++)
 {
     anim = std::make_unique<Anim>();
@@ -50,7 +50,10 @@ Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, in
     preVec = std::make_unique<KV>();
     prePos = std::make_unique<KV>();
     line = GAME_LINE;
-    QTree::update(id, static_cast<int>(x - w / 2), static_cast<int>(y - h), w, h, this);
+
+    rect = std::make_unique<QuadTreeRect>(static_cast<int>(x - w / 2), static_cast<int>(y - h), w, h, id, this);
+    setupCollisionCallbacks();
+    QuadTree::WORLD->insert(rect.get());
 }
 
 void Role::setFace(bool right)
@@ -150,7 +153,11 @@ void Role::tick(double deltaTime)
     }
     if (change && hasCollision())
     {
-        QTree::update(id, static_cast<int>(x - w / 2), static_cast<int>(y - h), w, h, this);
+        rect->x = static_cast<int>(x - w / 2);
+        rect->y = static_cast<int>(y - h);
+        rect->w = w;
+        rect->h = h;
+        QuadTree::WORLD->update(rect.get());
     }
     if (y >= line)
     {
@@ -191,7 +198,7 @@ void Role::render()
     int drawX = static_cast<int>(x);
     int drawY = static_cast<int>(y);
     // GDI::rect(drawX, drawY, w, h);
-    GDI::rect(drawX - w / 2, drawY - h, w, h);
+    GDI::rect(drawX - w / 2, drawY - h, w, h, Gdiplus::Color(40, 255, 255, 255));
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     if (!anim)
         return;
@@ -276,15 +283,33 @@ void Role::setProps(std::unordered_map<PropType, double> &&p)
 }
 Role::~Role()
 {
-    QTree::remove(id);
+    QuadTree::WORLD->remove(id);
 }
 
-void Role::onCollision(Role *other, DirectType dir)
+void Role::onCollision(Role *other, int dir)
 {
 }
-void Role::onCollisioning(Role *other, DirectType dir)
+void Role::onCollisioning(Role *other, int dir)
 {
 }
 void Role::onCollisionOut(Role *other)
 {
+}
+
+void Role::setupCollisionCallbacks()
+{
+    rect->onCollisionCallBack = [this](void *other, int dir)
+    {
+        onCollision(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), dir);
+    };
+
+    rect->onCollisioningCallBack = [this](void *other, int dir)
+    {
+        onCollisioning(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), dir);
+    };
+
+    rect->onCollisionOutCallBack = [this](void *other)
+    {
+        onCollisionOut(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val));
+    };
 }

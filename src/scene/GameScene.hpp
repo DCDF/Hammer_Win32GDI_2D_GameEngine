@@ -8,7 +8,6 @@
 #include "../Audios.h"
 #include "../KV.h"
 #include "../Input.h"
-#include "../QTree.h"
 #include "../role/LaoA.hpp"
 #include "../role/PlatForm.hpp"
 
@@ -39,7 +38,7 @@ public:
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
         // roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
 
-        roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, GAME_LINE, 100, 64, 10, 8, 100, 32));
+        // roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, GAME_LINE, 100, 64, 10, 8, 100, 32));
         int count = 0;
         roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
@@ -94,10 +93,8 @@ public:
         // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
         GDI::imageWorld(101, 0, 0);
         int count = 0;
-        for (auto &info : QTree::getCollisions(role->id))
-        {
-            GDI::text(L"方向" + std::to_wstring(int(info.second)), 320, count++ * 20);
-        }
+        auto collisions = QuadTree::WORLD->query(role->rect.get());
+        GDI::text(L"个数" + std::to_wstring(collisions.size() - 1), 320, count++ * 20);
         count = 0;
         for (auto &role : roleVec)
         {
@@ -107,8 +104,8 @@ public:
                 count++;
             }
         }
-        GDI::text(L"渲染个数" + std::to_wstring(count), GAME_OFFSET_X + 80, 50);
-        GDI::text(L"lockVec" + std::to_wstring(role->lockHandVec->k), GAME_OFFSET_X + 80, 80);
+        // GDI::text(L"渲染个数" + std::to_wstring(count), GAME_OFFSET_X + 80, 50);
+        // GDI::text(L"lockVec" + std::to_wstring(role->lockHandVec->k), GAME_OFFSET_X + 80, 80);
         GDI::text(L"ground" + std::to_wstring(role->ground) + L" line" + std::to_wstring(role->line) + L" flag" + std::to_wstring(role->flag), GAME_OFFSET_X + 160, 50);
     }
 

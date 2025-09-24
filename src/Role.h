@@ -7,8 +7,7 @@
 #include <unordered_map>
 #include "PropType.h"
 #include "Anim.h"
-// #include "QTree.h" // 不再需要在这里完整包含，避免循环引用
-
+#include "quadtree/QuadTree.h"
 extern int GAME_OFFSET_X;
 extern int GAME_LINE;
 extern int WORLD_LEFT;
@@ -21,10 +20,6 @@ namespace Gdiplus
 } // forward-declare GDI+ Bitmap
 
 class KV;
-
-// --- 关键改动 ---
-// 前向声明 DirectType，打破与 QTree.h 的循环依赖
-enum class DirectType;
 
 class Role
 {
@@ -66,6 +61,7 @@ public:
     double gravity = 800;
     double upSpeed = 0;
     double downSpeed = 0;
+    std::unique_ptr<QuadTreeRect> rect;
     // movement / input vectors (KV is your small struct)
     std::unique_ptr<KV> handVec;
     std::unique_ptr<KV> lockHandVec;
@@ -102,8 +98,9 @@ public:
     virtual bool hasCollision();
     virtual void checkTickState();
 
-    // 现在这些声明是正确的，因为 DirectType 已被前向声明
-    virtual void onCollision(Role *other, DirectType dir);
-    virtual void onCollisioning(Role *other, DirectType dir);
+    virtual void setupCollisionCallbacks();
+
+    virtual void onCollision(Role *other, int dir);
+    virtual void onCollisioning(Role *other, int dir);
     virtual void onCollisionOut(Role *other);
 };

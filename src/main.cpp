@@ -1,13 +1,11 @@
 ﻿#include "PC.h"
 #include "GDI.h"
-// #include "Audio.h"
 #include <chrono>
 #include "Camera.h"
 #include "Scene.h"
 #include "scene/StartScene.hpp"
 #include "scene/GameScene.hpp"
 #include "Input.h"
-#include "QTree.h"
 #include <iostream>
 
 extern int GAME_WIDTH;
@@ -27,7 +25,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 
     Input::Initialize(pc.window());
     GDI::init(pc.window());
-    // Audio_bg(301);
 
     TimePoint prev_time = Clock::now();
 
@@ -37,10 +34,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     bool running = true;
     std::wstring fpsText = L"0";
 
-    QTree::init(0, 0, 2048, 2048);
+    QuadTree::WORLD = std::make_unique<QuadTree>(QuadTreeRect(0, 0, 2048, 2048), 4);
+
     // 设置碰撞回调
 
-    Scene::change(std::make_unique<StartScene>());
+    Scene::change(std::make_unique<GameScene>());
     while (running)
     {
         if (!pc.tick())
@@ -59,7 +57,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
             fps = tickCount;
             tickCount = 0;
         }
-        if(dt > 0.33){
+        if (dt > 0.33)
+        {
             dt = 0.33;
         }
         Input::Update();
@@ -70,14 +69,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::setCamera(GAME_OFFSET_X, GAME_OFFSET_Y);
         Scene::curScene->render();
         GDI::tick(dt);
-        
+
         GDI::setCamera(0, 0);
         Scene::curScene->renderGlobal();
         GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
-        QTree::updateCollisions();
+        QuadTree::WORLD->tick(dt);
     }
-
+    //保证场景内对象清理在tree之前
+    Scene::change(nullptr);
     GDI::end();
     Input::Shutdown();
     return 0;
