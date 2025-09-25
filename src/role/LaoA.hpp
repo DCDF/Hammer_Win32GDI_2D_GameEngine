@@ -35,12 +35,21 @@ public:
 
         if (dir == 0)
         {
-            other->x = x + w / 2 + other->w / 2;
+            auto value = other->w / 2 + w / 2;
+            if ((other->x - value) < x)
+            {
+                other->x = x + value;
+            }
             other->lockHandVec->k = -1;
         }
         else if (dir == 1)
         {
-            other->x = x - other->w / 2 - w / 2;
+            auto value = other->w / 2 + w / 2;
+            if ((other->x + value) > x)
+            {
+                other->x = x - value;
+            }
+
             other->lockHandVec->k = 1;
         }
         else if (dir == 3)

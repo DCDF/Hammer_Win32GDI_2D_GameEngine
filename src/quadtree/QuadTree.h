@@ -25,12 +25,12 @@ public:
 
     // 每帧检查需要更新的对象并触发已碰撞对象的碰撞中接口
     void tick(double dt);
+    // 记录两两碰撞时的来源方
+    std::unordered_map<uint64_t, std::unique_ptr<QuadTreeCollisionInfo>> collisionCache;
+    std::unordered_map<QuadTreeRect *, std::unordered_set<QuadTreeRect *>> collisionListCache;
 private:
     std::unordered_map<int, QuadTreeRect *> cache;
     std::unordered_map<int, QuadTreeRect *> curUpdates;
     std::unordered_set<QuadTreeRect *> reinserts;
     std::unordered_set<uint64_t> processedPairs;
-    // 记录两两碰撞时的来源方
-    std::unordered_map<uint64_t, std::unique_ptr<QuadTreeCollisionInfo>> collisionCache;
-    std::unordered_map<QuadTreeRect *, std::unordered_set<QuadTreeRect *>> collisionListCache;
 };
