@@ -199,13 +199,14 @@ void Role::render()
     int drawY = static_cast<int>(y);
     // GDI::rect(drawX, drawY, w, h);
     GDI::rect(drawX - w / 2, drawY - h, w, h, Gdiplus::Color(40, 255, 255, 255));
+    GDI::text(std::to_wstring(id), static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     if (!anim)
         return;
     auto track = anim->curTrack();
     if (track)
     {
-        GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
+        // GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
     }
 }
 
