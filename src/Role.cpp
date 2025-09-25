@@ -199,7 +199,7 @@ void Role::render()
     int drawY = static_cast<int>(y);
     // GDI::rect(drawX, drawY, w, h);
     GDI::rect(drawX - w / 2, drawY - h, w, h, Gdiplus::Color(40, 255, 255, 255));
-    GDI::text(std::to_wstring(id), static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
+    GDI::text(std::to_wstring(id), static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset), 10.5);
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     if (!anim)
         return;
@@ -287,30 +287,30 @@ Role::~Role()
     QuadTree::WORLD->remove(id);
 }
 
-void Role::onCollision(Role *other, int dir)
+void Role::onCollision(Role *other, int dir, bool from)
 {
 }
-void Role::onCollisioning(Role *other, int dir)
+void Role::onCollisioning(Role *other, int dir, bool from)
 {
 }
-void Role::onCollisionOut(Role *other)
+void Role::onCollisionOut(Role *other, bool from)
 {
 }
 
 void Role::setupCollisionCallbacks()
 {
-    rect->onCollisionCallBack = [this](void *other, int dir)
+    rect->onCollisionCallBack = [this](void *other, int dir, bool from)
     {
-        onCollision(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), dir);
+        onCollision(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), dir, from);
     };
 
-    rect->onCollisioningCallBack = [this](void *other, int dir)
+    rect->onCollisioningCallBack = [this](void *other, int dir, bool from)
     {
-        onCollisioning(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), dir);
+        onCollisioning(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), dir, from);
     };
 
-    rect->onCollisionOutCallBack = [this](void *other)
+    rect->onCollisionOutCallBack = [this](void *other, bool from)
     {
-        onCollisionOut(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val));
+        onCollisionOut(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), from);
     };
 }

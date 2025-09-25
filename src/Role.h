@@ -100,7 +100,7 @@ public:
 
     virtual void setupCollisionCallbacks();
 
-    virtual void onCollision(Role *other, int dir);
-    virtual void onCollisioning(Role *other, int dir);
-    virtual void onCollisionOut(Role *other);
+    virtual void onCollision(Role *other, int dir, bool from);
+    virtual void onCollisioning(Role *other, int dir, bool from);
+    virtual void onCollisionOut(Role *other, bool from);
 };

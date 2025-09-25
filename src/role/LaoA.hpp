@@ -21,33 +21,44 @@ public:
         play("idle");
     }
 
-    virtual void onCollision(Role *other, int dir) override
+    virtual void onCollision(Role *other, int dir, bool from) override
     {
-        if (dir == 2 && other->y <= y - h + 3)
+        if (from)
+            return;
+        onCollisioning(other, dir, from);
+        other->flag += 1;
+    }
+    virtual void onCollisioning(Role *other, int dir, bool from) override
+    {
+        if (from)
+            return;
+
+        if (dir == 0)
         {
-            other->otherLine = y - h;
+            other->x = x + w / 2 + other->w / 2;
+            other->lockHandVec->k = -1;
         }
         else if (dir == 1)
         {
-            other->lockHandVec->k = -1;
-        }
-        else if (dir == 0)
-        {
+            other->x = x - other->w / 2 - w / 2;
             other->lockHandVec->k = 1;
         }
-        other->flag += 1;
-    }
-    virtual void onCollisioning(Role *other, int dir) override
-    {
-        if (dir == 2 && other->y <= y - h + 3)
+        else if (dir == 3)
         {
-            other->otherLine = y - h;
+            if (other->y <= y - h + 3)
+            {
+                other->y = y - h;
+                other->otherLine = y - h;
+            }
         }
     }
-    virtual void onCollisionOut(Role *other) override
+    virtual void onCollisionOut(Role *other, bool from) override
     {
         other->flag -= 1;
-        other->otherLine = 0;
         other->lockHandVec->clear();
+        if (other->flag == 0)
+        {
+            other->otherLine = 0;
+        }
     }
 };

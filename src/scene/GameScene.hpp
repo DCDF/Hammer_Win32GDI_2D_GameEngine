@@ -33,10 +33,11 @@ public:
         roleVec.emplace_back(std::make_unique<LaoA>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
 
-        for (int i = 0; i < 50; i++)
-        {
-            roleVec.emplace_back(std::make_unique<LaoA>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        }
+        // for (int i = 0; i < 5; i++)
+        // {
+        //     roleVec.emplace_back(std::make_unique<LaoA>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // }
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 150, GAME_LINE, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
     }
@@ -60,9 +61,9 @@ public:
 
     void render() override
     {
-        
 
         // GDI::imageWorld(101, 0, 0);
+        GDI::text(L"flag " + std::to_wstring(role->flag), 60, 60);
         for (auto &role : roleVec)
         {
             role->render();

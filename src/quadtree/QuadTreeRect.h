@@ -2,6 +2,9 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <functional>
+
+#include "QuadTreeCollisionInfo.h"
+
 class QuadTreeRect
 {
 public:
@@ -14,18 +17,14 @@ public:
     static const float UPDATE_THRESHOLD;
     QuadTreeRect *parent;
     void *val;
-    std::unordered_set<QuadTreeRect *> collisioning;
-    std::unordered_map<QuadTreeRect *, int> collisionDir;
-    std::function<void(void *, int)> onCollisionCallBack;
-    std::function<void(void *, int)> onCollisioningCallBack;
-    std::function<void(void *)> onCollisionOutCallBack;
+
+    std::function<void(void *, int, bool)> onCollisionCallBack;
+    std::function<void(void *, int, bool)> onCollisioningCallBack;
+    std::function<void(void *, bool)> onCollisionOutCallBack;
     bool contains(QuadTreeRect *other);
 
     bool inBound(float centerX, float centerY);
     bool needReInsert();
     bool update();
     int getDir(QuadTreeRect *other);
-    void onCollision(QuadTreeRect *other, int dir);
-    void onCollisioning(QuadTreeRect *other, int dir);
-    void onCollisionOut(QuadTreeRect *other);
 };

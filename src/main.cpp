@@ -61,6 +61,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         {
             dt = 0.33;
         }
+        QuadTree::WORLD->tick(dt);
         Input::Update();
         Scene::curScene->tick(dt);
         GDI::begin(dt);
@@ -74,7 +75,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         Scene::curScene->renderGlobal();
         GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
-        QuadTree::WORLD->tick(dt);
     }
     //保证场景内对象清理在tree之前
     Scene::change(nullptr);

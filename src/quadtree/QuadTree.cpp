@@ -26,35 +26,16 @@ std::unordered_set<QuadTreeRect *> QuadTree::query(QuadTreeRect *range)
 // 真正需要移除时调用,会清理碰撞缓存,如果只是移动更新的,不需要此接口,走节点删除和插入,并更新
 bool QuadTree::remove(int id)
 {
-    auto cacheIt = cache.find(id);
-    if (cacheIt == cache.end())
+    auto it = cache[id];
+    auto list = collisionListCache[it];
+    for (auto &item : list)
     {
-        return false;
+        collisionListCache[item].erase(it);
     }
-    QuadTreeRect *itemToRemove = cacheIt->second;
-    if (itemToRemove != nullptr)
-    {
-        // 创建 collisioning 的副本以避免在遍历时修改原始集合
-        auto collisioningCopy = itemToRemove->collisioning;
-        for (auto other : collisioningCopy)
-        {
-            // 检查 other 是否仍然在缓存中
-            if (cache.find(other->id) != cache.end())
-            {
-                other->collisioning.erase(itemToRemove);
-                other->collisionDir.erase(itemToRemove);
-                if (other->collisioning.empty())
-                {
-                    collisionRects.erase(other);
-                }
-            }
-        }
-        itemToRemove->collisioning.clear();
-        root->remove(itemToRemove);
-    }
-    collisionRects.erase(itemToRemove);
+    cache.erase(id);
+    collisionListCache.erase(it);
     curUpdates.erase(id);
-    cache.erase(cacheIt);
+    reinserts.erase(it);
     return true;
 }
 
@@ -87,71 +68,75 @@ void QuadTree::tick(double dt)
 
     for (auto const &[id, val] : curUpdates)
     {
-        auto preCollision = val->collisioning;
+        auto preCollision = collisionListCache[val];
         auto newCollisions = query(val);
-
+        // 排除自身
+        newCollisions.erase(val);
         // 新碰撞检查
         for (auto other : newCollisions)
         {
-            if (other == val)
-                continue;
             uint64_t pairId = (val->id < other->id)
                                   ? (static_cast<uint64_t>(val->id) << 32) | other->id
                                   : (static_cast<uint64_t>(other->id) << 32) | val->id;
             if (processedPairs.count(pairId))
                 continue;
             processedPairs.emplace(pairId);
-            // 新碰撞
+            // 这里做个优化,变化后先遍历的碰撞则是主动碰撞,另外个是被动碰撞
             if (preCollision.find(other) == preCollision.end())
             {
-                val->onCollision(other, val->getDir(other));
-                other->onCollision(val, other->getDir(val));
-                other->collisioning.emplace(val);
-                collisionRects.emplace(other);
-                collisionRects.emplace(val);
+                //  新碰撞
+                auto newInfo = std::make_unique<QuadTreeCollisionInfo>();
+                auto info = newInfo.get();
+                collisionCache[pairId] = std::move(newInfo);
+                info->from = val;
+                info->to = other;
+                info->dir = val->getDir(other);
+
+                int dir = val->getDir(other);
+                val->onCollisionCallBack(other, dir, true);
+                other->onCollisionCallBack(val, dir, false);
+
+                collisionListCache[val].emplace(other);
+                collisionListCache[other].emplace(val);
+            }
+            else
+            {
+                // 旧碰撞,将主动方更新
+                auto info = collisionCache.find(pairId)->second.get();
+                info->from = val;
+                info->to = other;
+                info->dir = val->getDir(other);
             }
         }
+
         // 碰撞失效检查
         for (auto other : preCollision)
         {
-            if (other == val)
-                continue;
             if (newCollisions.find(other) == newCollisions.end())
             {
-                val->onCollisionOut(other);
-                val->collisioning.erase(other);
-                val->collisionDir.erase(other);
 
-                other->onCollisionOut(val);
-                other->collisioning.erase(val);
-                other->collisionDir.erase(val);
+                uint64_t pairId = (val->id < other->id)
+                                      ? (static_cast<uint64_t>(val->id) << 32) | other->id
+                                      : (static_cast<uint64_t>(other->id) << 32) | val->id;
+                auto info = collisionCache.find(pairId)->second.get();
 
-                if (val->collisioning.empty())
-                {
-                    collisionRects.erase(val);
-                }
-                if (other->collisioning.empty())
-                {
-                    collisionRects.erase(other);
-                }
+                collisionListCache[val].erase(other);
+                collisionListCache[other].erase(val);
+                bool from = info->from == val;
+
+                val->onCollisionOutCallBack(other, from);
+                other->onCollisionOutCallBack(val, !from);
+
+                collisionCache.erase(pairId);
             }
         }
-        val->collisioning = newCollisions;
+        collisionListCache[val] = newCollisions;
     }
 
-    for (auto item : collisionRects)
+    for (auto const &[pairId, info] : collisionCache)
     {
-        for (auto other : item->collisioning)
-        {
-            if (item == other)
-                continue;
-            int dir1 = item->getDir(other);
-            item->onCollisioning(other, dir1);
-            item->collisionDir[other] = dir1;
-            int dir2 = other->getDir(item);
-            other->onCollisioning(item, dir2);
-            other->collisionDir[item] = dir2;
-        }
+        info->from->onCollisioningCallBack(info->to, info->dir, true);
+        info->to->onCollisioningCallBack(info->from, info->dir, false);
     }
 
     processedPairs.clear();

@@ -41,21 +41,6 @@ bool QuadTreeRect::update()
     return false;
 }
 
-void QuadTreeRect::onCollision(QuadTreeRect *other, int dir)
-{
-    onCollisionCallBack(other, dir);
-}
-
-void QuadTreeRect::onCollisionOut(QuadTreeRect *other)
-{
-    onCollisionOutCallBack(other);
-}
-
-void QuadTreeRect::onCollisioning(QuadTreeRect *other, int dir)
-{
-    onCollisioningCallBack(other, dir);
-}
-
 int QuadTreeRect::getDir(QuadTreeRect *other)
 {
     int dir = 0; // todo 0左 1右 2上 3下
