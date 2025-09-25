@@ -7,6 +7,8 @@
 class QuadTreeNode
 {
 public:
+ // 最大深度,达到后不再分裂
+ static const int MAX_DEPTH = 7;
     QuadTreeNode(QuadTreeRect rect, int capacity, int depth = 0);
 
     // 范围
@@ -19,8 +21,6 @@ public:
     int capacity;
     // 深度
     int depth;
-    // 最大深度,达到后不再分裂
-    static const int MAX_DEPTH = 8;
     // 西北
     std::unique_ptr<QuadTreeNode> nw;
     // 东北

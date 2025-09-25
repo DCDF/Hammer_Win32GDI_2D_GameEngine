@@ -1,5 +1,6 @@
 ﻿#include "QuadTreeNode.h"
 #include <iostream>
+
 QuadTreeNode::QuadTreeNode(QuadTreeRect rect, int capacity, int depth) : bound(rect), capacity(capacity), depth(depth)
 {
 }
@@ -129,11 +130,19 @@ void QuadTreeNode::sub()
     float w = bound.w / 2;
     float h = bound.h / 2;
 
+    // 松散因子,使用松散边界，扩大每个子节点的范围,解决节点矩形超出节点本身范围的问题
+    float looseFactor = 0.35f;
+    float looseW = w * (1 + looseFactor);
+    float looseH = h * (1 + looseFactor);
+
+    float centerX = x + w;
+    float centerY = y + h;
+
     int newDepth = depth + 1;
-    nw = std::make_unique<QuadTreeNode>(QuadTreeRect(x, y, w, h), capacity, newDepth);
-    ne = std::make_unique<QuadTreeNode>(QuadTreeRect(x + w, y, w, h), capacity, newDepth);
-    sw = std::make_unique<QuadTreeNode>(QuadTreeRect(x, y + h, w, h), capacity, newDepth);
-    se = std::make_unique<QuadTreeNode>(QuadTreeRect(x + w, y + h, w, h), capacity, newDepth);
+    nw = std::make_unique<QuadTreeNode>(QuadTreeRect(x - w * looseFactor, y - h * looseFactor, looseW, looseH), capacity, newDepth);
+    ne = std::make_unique<QuadTreeNode>(QuadTreeRect(centerX - w * looseFactor, y - h * looseFactor, looseW, looseH), capacity, newDepth);
+    sw = std::make_unique<QuadTreeNode>(QuadTreeRect(x - w * looseFactor, centerY - h * looseFactor, looseW, looseH), capacity, newDepth);
+    se = std::make_unique<QuadTreeNode>(QuadTreeRect(centerX - w * looseFactor, centerY - h * looseFactor, looseW, looseH), capacity, newDepth);
 }
 
 // 尝试合并子节点

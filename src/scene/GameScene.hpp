@@ -32,33 +32,11 @@ public:
 
         roleVec.emplace_back(std::make_unique<LaoA>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
-        // roleVec.emplace_back(std::make_unique<LaoA>(201, 128, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        // roleVec.emplace_back(std::make_unique<LaoA>(201, 192, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        // roleVec.emplace_back(std::make_unique<LaoA>(201, 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        // roleVec.emplace_back(std::make_unique<LaoA>(201, 250, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        // roleVec.emplace_back(std::make_unique<LaoA>(201, 300, GAME_LINE, 64, 64, 10, 8, 20, 32));
 
-        // roleVec.emplace_back(std::make_unique<PlatForm>(201, 340, GAME_LINE, 100, 64, 10, 8, 100, 32));
-        int count = 0;
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 340 + count++ * 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        // roleVec.emplace_back(std::make_unique<PlatForm>(201, 400, GAME_LINE - 32, 64, 64, 10, 8, 20, 32));
+        for (int i = 0; i < 50; i++)
+        {
+            roleVec.emplace_back(std::make_unique<LaoA>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        }
 
         Camera::setTarget(role);
     }
@@ -82,40 +60,13 @@ public:
 
     void render() override
     {
-        // if (GAME_OFFSET_X > floorX)
-        // {
-        //     if (GAME_OFFSET_X > floorX + GAME_WIDTH)
-        //     {
-        //         floorX += GAME_WIDTH;
-        //     }
-        //     GDI::image(101, floorX + GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
-        // }
+        
 
-        // if (GAME_OFFSET_X < floorX)
-        // {
-        //     if (GAME_OFFSET_X < floorX - GAME_WIDTH)
-        //     {
-        //         floorX -= GAME_WIDTH;
-        //     }
-        //     GDI::image(101, floorX - GAME_WIDTH, GAME_HEIGHT - 160, GAME_WIDTH, 160);
-        // }
-        // GDI::image(101, floorX,GAME_HEIGHT - 160, GAME_WIDTH, 160);
-        GDI::imageWorld(101, 0, 0);
-        int count = 0;
-        auto collisions = QuadTree::WORLD->query(role->rect.get());
-        GDI::text(L"个数" + std::to_wstring(collisions.size() - 1), 320, count++ * 20);
-        count = 0;
+        // GDI::imageWorld(101, 0, 0);
         for (auto &role : roleVec)
         {
             role->render();
-            if (!role->outSide)
-            {
-                count++;
-            }
         }
-        // GDI::text(L"渲染个数" + std::to_wstring(count), GAME_OFFSET_X + 80, 50);
-        // GDI::text(L"lockVec" + std::to_wstring(role->lockHandVec->k), GAME_OFFSET_X + 80, 80);
-        GDI::text(L"ground" + std::to_wstring(role->ground) + L" line" + std::to_wstring(role->line) + L" flag" + std::to_wstring(role->flag), GAME_OFFSET_X + 160, 50);
     }
 
     void renderGlobal() override
