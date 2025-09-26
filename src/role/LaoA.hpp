@@ -23,10 +23,10 @@ public:
 
     virtual void onCollision(Role *other, int dir, bool from) override
     {
+        other->flag += 1;
         if (from)
             return;
         onCollisioning(other, dir, from);
-        other->flag += 1;
     }
     virtual void onCollisioning(Role *other, int dir, bool from) override
     {
@@ -38,7 +38,7 @@ public:
             auto value = other->w / 2 + w / 2;
             if ((other->x - value) < x)
             {
-                other->x = x + value;
+                other->x = (x + value);
             }
             other->lockHandVec->k = -1;
         }
@@ -47,7 +47,7 @@ public:
             auto value = other->w / 2 + w / 2;
             if ((other->x + value) > x)
             {
-                other->x = x - value;
+                other->x = (x - value);
             }
 
             other->lockHandVec->k = 1;
@@ -56,7 +56,7 @@ public:
         {
             if (other->y <= y - h + 3)
             {
-                other->y = y - h;
+                other->y = (y - h);
                 other->otherLine = y - h;
             }
         }

@@ -64,22 +64,26 @@ public:
     {
 
         // GDI::imageWorld(101, 0, 0);
-        auto collisionList = QuadTree::WORLD->collisionListCache[role->rect.get()];
-        int count = 0;
-        for (auto &info : collisionList)
-        {
-            count++;
-            uint64_t pairId = (role->id < info->id)
-                                  ? (static_cast<uint64_t>(role->id) << 32) | info->id
-                                  : (static_cast<uint64_t>(info->id) << 32) | role->id;
-            auto each = QuadTree::WORLD->collisionCache[pairId].get();
-            GDI::text(L"from " + std::to_wstring(each->dir), GAME_OFFSET_X + 120, count * 40);
-        }
-        GDI::text(L"flag " + std::to_wstring(role->flag), 60, 60);
+        // auto collisionList = QuadTree::WORLD->collisionListCache[role->rect.get()];
+        // int count = 0;
+        // for (auto &info : collisionList)
+        // {
+        //     count++;
+        //     uint64_t pairId = (role->id < info->id)
+        //                           ? (static_cast<uint64_t>(role->id) << 32) | info->id
+        //                           : (static_cast<uint64_t>(info->id) << 32) | role->id;
+        //     auto each = QuadTree::WORLD->collisionCache[pairId].get();
+        //     GDI::text(L"from " + std::to_wstring(each->dir), GAME_OFFSET_X + 120, count * 40);
+        // }
+        // GDI::text(L"flag " + std::to_wstring(role->flag), 60, 60);
         for (auto &role : roleVec)
         {
             role->render();
         }
+        // int testId = 24;
+        // auto testRect = QuadTree::WORLD->cache[testId];
+        // GDI::text(L"debugRect " + std::to_wstring(testRect->x) + L"," + std::to_wstring(testRect->y) + L"," + std::to_wstring(testRect->w) + L"," + std::to_wstring(testRect->h), GAME_OFFSET_X + 120, 100);
+        // GDI::text(L"myRect " + std::to_wstring(role->rect->x) + L"," + std::to_wstring(role->rect->y) + L"," + std::to_wstring(role->rect->w) + L"," + std::to_wstring(role->rect->h), GAME_OFFSET_X + 120, 130);
     }
 
     void renderGlobal() override

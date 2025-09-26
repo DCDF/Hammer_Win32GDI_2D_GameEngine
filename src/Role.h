@@ -23,6 +23,7 @@ class KV;
 
 class Role
 {
+private:
 public:
     Role(int resId, int x, int y, int imgW, int imgH, int row, int col, int w, int h);
     virtual ~Role();
@@ -31,14 +32,9 @@ public:
     bool ground = true;
     bool face;
     bool outSide = false;
+    bool posChange = true;
     static int ROLE_ID;
-    int id;
-    int imgW;
-    int imgH;
-    int w;
-    int h;
-
-    int flag = 0;
+    int id = 0, imgW = 0, imgH = 0, w = 0, h = 0, centerX = 0, centerY = 0, flag = 0;
     double otherLine = 0;
     int line = 0;
     int resId;
@@ -53,8 +49,6 @@ public:
     // scale (used to mirror)
     float scaleX;
     float scaleY;
-
-    // position & frame size
     double x;
     double y;
     // gravity
@@ -87,7 +81,7 @@ public:
     // lifecycle
     virtual void tick(double deltaTime);
     virtual void render();
-
+    
     // animation helpers
     virtual void addAnimation(const std::string &name, int start, int num, bool loop, std::vector<int> hitIndex);
     virtual void play(const std::string &name, bool force = true);

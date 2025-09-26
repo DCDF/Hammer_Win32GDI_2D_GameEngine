@@ -102,6 +102,7 @@ void Role::tick(double deltaTime)
             }
         }
     }
+
     bool ignoreHandVec = (lockHandVec->k > 0 && handVec->k > 0) || (lockHandVec->k < 0 && handVec->k < 0);
     if (ignoreHandVec)
     {
@@ -144,19 +145,18 @@ void Role::tick(double deltaTime)
         {
             x = WORLD_RIGHT;
         }
-        change = true;
     }
     if (totalVec->v != 0)
     {
         y += totalVec->v * deltaTime;
-        change = true;
     }
-    if (change && hasCollision())
+    posChange = prePos->k != x || prePos->v != y;
+    if (posChange && hasCollision())
     {
-        rect->x = static_cast<int>(x - w / 2);
-        rect->y = static_cast<int>(y - h);
-        rect->w = w;
-        rect->h = h;
+        rect->x = static_cast<float>(x - w / 2);
+        rect->y = static_cast<float>(y - h);
+        rect->w = static_cast<float>(w);
+        rect->h = static_cast<float>(h);
         QuadTree::WORLD->update(rect.get());
     }
     if (y >= line)
