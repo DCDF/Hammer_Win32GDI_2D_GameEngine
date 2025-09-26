@@ -206,7 +206,7 @@ void Role::render()
     auto track = anim->curTrack();
     if (track)
     {
-        // GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
+        GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
     }
 }
 

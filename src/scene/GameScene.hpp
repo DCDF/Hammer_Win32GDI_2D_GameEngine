@@ -29,7 +29,7 @@ protected:
 public:
     void beforeEnter() override
     {
-        Audios::bg(301);
+        // Audios::bg(301);
 
         roleVec.emplace_back(std::make_unique<LaoA>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
@@ -63,7 +63,7 @@ public:
     void render() override
     {
 
-        // GDI::imageWorld(101, 0, 0);
+        GDI::imageWorld(101, 0, 0);
         // auto collisionList = QuadTree::WORLD->collisionListCache[role->rect.get()];
         // int count = 0;
         // for (auto &info : collisionList)
@@ -84,6 +84,7 @@ public:
         // auto testRect = QuadTree::WORLD->cache[testId];
         // GDI::text(L"debugRect " + std::to_wstring(testRect->x) + L"," + std::to_wstring(testRect->y) + L"," + std::to_wstring(testRect->w) + L"," + std::to_wstring(testRect->h), GAME_OFFSET_X + 120, 100);
         // GDI::text(L"myRect " + std::to_wstring(role->rect->x) + L"," + std::to_wstring(role->rect->y) + L"," + std::to_wstring(role->rect->w) + L"," + std::to_wstring(role->rect->h), GAME_OFFSET_X + 120, 130);
+        GDI::text(L"ground " + std::to_wstring(role->ground), GAME_OFFSET_X + 120, 130);
     }
 
     void renderGlobal() override

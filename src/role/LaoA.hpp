@@ -56,7 +56,6 @@ public:
         {
             if (other->y <= y - h + 3)
             {
-                other->y = (y - h);
                 other->otherLine = y - h;
             }
         }
