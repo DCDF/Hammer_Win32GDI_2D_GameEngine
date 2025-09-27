@@ -29,16 +29,15 @@ protected:
 public:
     void beforeEnter() override
     {
-        // Audios::bg(301);
+        Audios::bg(301);
 
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, WORLD_RIGHT - 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
 
-        for (int i = 0; i < 50; i++)
-        {
-            roleVec.emplace_back(std::make_unique<LaoA>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        }
-        // roleVec.emplace_back(std::make_unique<LaoA>(201, 150, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // for (int i = 0; i < 50; i++)
+        // {
+        //     roleVec.emplace_back(std::make_unique<LaoA>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        // }
 
         Camera::setTarget(role);
     }
