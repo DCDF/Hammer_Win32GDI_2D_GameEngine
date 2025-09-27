@@ -17,7 +17,7 @@ bool Role::hasCollision()
     return true;
 }
 
-Role::Role(int resId, int x_, int y_, int imgW_, int imgH_, int row, int col, int w_, int h_)
+Role::Role(int x_, int y_, int resId, int imgW_, int imgH_, int row, int col, int w_, int h_)
     : x(x_),
       y(y_),
       imgW(imgW_),
@@ -62,7 +62,13 @@ void Role::setFace(bool right)
     {
         face = right;
         scaleX *= -1.0f;
+        flipX = !flipX;
     }
+}
+
+bool Role::isRight()
+{
+    return scaleX > 0;
 }
 
 void Role::checkTickState()
@@ -198,7 +204,6 @@ void Role::render()
     int drawX = static_cast<int>(x);
     int drawY = static_cast<int>(y);
     // GDI::rect(drawX, drawY, w, h);
-    // GDI::rect(drawX - w / 2, drawY - h, w, h, Gdiplus::Color(40, 255, 255, 255));
     // GDI::text(std::to_wstring(id), static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset), 10.5);
     // GDI::text(name, static_cast<int>(x + nameXOffset), static_cast<int>(y + nameYOffset),10.5);
     if (!anim)
@@ -206,8 +211,9 @@ void Role::render()
     auto track = anim->curTrack();
     if (track)
     {
-        GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, face, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
+        GDI::imageEx(resId, static_cast<int>(x - imgW / 2), static_cast<int>(y - imgH), imgW, imgH, flipX, track->spriteX, track->spriteY, track->spriteW, track->spriteH);
     }
+    // GDI::rect(drawX - w / 2, drawY - h, w, h, Gdiplus::Color(40, 255, 255, 255));
 }
 
 void Role::addAnimation(const std::string &name, int start, int num, bool loop, std::vector<int> hitIndex)
@@ -289,12 +295,45 @@ Role::~Role()
 
 void Role::onCollision(Role *other, int dir, bool from)
 {
+    other->flag += 1;
+    if (from)
+        return;
+    onCollisioning(other, dir, from);
 }
 void Role::onCollisioning(Role *other, int dir, bool from)
 {
+    if (from)
+        return;
+    float leftX = x - w / 2;
+    float otherLeftX = other->x - other->w / 2;
+    float offset = 3;
+
+    float dis = std::abs(other->y - y);
+    if (other->y < y && dis >= h - offset)
+    {
+        // 头顶
+        other->otherLine = y - h;
+        //被踩着
+        lockHandVec->p = 1;
+    }
+    else if (other->y > y && dis >= other->h - offset)
+    {
+        // 脚下
+        other->lockHandVec->p = 1;
+    }
+    else
+    {
+        other->lockHandVec->k = otherLeftX > leftX ? -1 : 1;
+    }
 }
 void Role::onCollisionOut(Role *other, bool from)
 {
+    other->flag -= 1;
+    other->lockHandVec->clear();
+    if (other->flag == 0)
+    {
+        other->otherLine = 0;
+    }
 }
 
 void Role::setupCollisionCallbacks()

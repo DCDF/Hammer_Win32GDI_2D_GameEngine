@@ -25,9 +25,10 @@ class Role
 {
 private:
 public:
-    Role(int resId, int x, int y, int imgW, int imgH, int row, int col, int w, int h);
+    Role(int x = 0, int y = 0, int resId = 0, int imgW = 0, int imgH = 0, int row = 0, int col = 0, int w = 0, int h = 0);
     virtual ~Role();
 
+    bool flipX = false;
     bool idle = true;
     bool ground = true;
     bool face;
@@ -77,11 +78,11 @@ public:
 
     // control
     void setFace(bool right);
-
+    virtual bool isRight();
     // lifecycle
     virtual void tick(double deltaTime);
     virtual void render();
-    
+
     virtual void jump();
     // animation helpers
     virtual void addAnimation(const std::string &name, int start, int num, bool loop, std::vector<int> hitIndex);

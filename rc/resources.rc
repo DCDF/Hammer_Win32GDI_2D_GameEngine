@@ -3,6 +3,7 @@
 102 RCDATA "bg.png"
 
 201 RCDATA "zombie1.png"
+202 RCDATA "role/mount knight.png"
 
 301 RCDATA "guojige.mp3"  
 302 RCDATA "blackrx.mp3"  

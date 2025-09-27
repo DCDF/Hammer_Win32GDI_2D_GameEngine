@@ -11,6 +11,7 @@
 #include "../Input.h"
 #include "../role/LaoA.hpp"
 #include "../role/Zombie.hpp"
+#include "../role/MountKnight.hpp"
 #include "../role/PlatForm.hpp"
 
 extern int GAME_WIDTH;
@@ -35,11 +36,9 @@ public:
     {
         Audios::bg(301);
 
-        roleVec.emplace_back(std::make_unique<LaoA>(201, 100, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<MountKnight>(150, GAME_LINE - 200));
         role = roleVec.back().get();
-
-        // roleVec.emplace_back(std::make_unique<Zombie>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
-
+        roleVec.emplace_back(std::make_unique<LaoA>(150, GAME_LINE));
         Camera::setTarget(role);
     }
 
@@ -88,7 +87,7 @@ public:
         // auto testRect = QuadTree::WORLD->cache[testId];
         // GDI::text(L"debugRect " + std::to_wstring(testRect->x) + L"," + std::to_wstring(testRect->y) + L"," + std::to_wstring(testRect->w) + L"," + std::to_wstring(testRect->h), GAME_OFFSET_X + 120, 100);
         // GDI::text(L"myRect " + std::to_wstring(role->rect->x) + L"," + std::to_wstring(role->rect->y) + L"," + std::to_wstring(role->rect->w) + L"," + std::to_wstring(role->rect->h), GAME_OFFSET_X + 120, 130);
-        GDI::text(L"ground " + std::to_wstring(role->ground), GAME_OFFSET_X + 120, 130);
+        // GDI::text(L"ground " + std::to_wstring(role->ground), GAME_OFFSET_X + 120, 130);
     }
 
     void renderGlobal() override
@@ -111,7 +110,7 @@ public:
         if (zombieTime <= 0 && max > 0)
         {
             max--;
-            roleVec.emplace_back(std::make_unique<Zombie>(201, role->x, GAME_LINE, 64, 64, 10, 8, 20, 32));
+            roleVec.emplace_back(std::make_unique<Zombie>(role->x, GAME_LINE));
             zombieTime = 0.5;
         }
 

@@ -8,7 +8,7 @@ public:
     int dir = 0;
     int speed = 0;
     bool revertSpeed = false;
-    Zombie(int resId, int x, int y, int imgW, int imgH, int row, int col, int w, int h) : LaoA(resId, x, y, imgW, imgH, row, col, w, h)
+    Zombie(int x, int y) : LaoA(x, y)
     {
         speed = rand() % 50 + 10;
     }
@@ -35,7 +35,7 @@ public:
                 }
             }
         }
-        handVec->k = revertSpeed? speed : -speed;
+        handVec->k = revertSpeed ? speed : -speed;
         Role::tick(deltaTime);
     }
 };
