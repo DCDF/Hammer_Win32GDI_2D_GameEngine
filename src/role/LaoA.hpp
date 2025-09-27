@@ -46,6 +46,7 @@ public:
             }
             else
             {
+                other->lockHandVec->p = 1;
                 // 下
             }
         }
@@ -53,44 +54,6 @@ public:
         {
             other->lockHandVec->k = otherLeftX > leftX ? -1 : 1;
         }
-        // if (otherLeftX >= leftX)
-        // {
-        //     // 右
-        //     other->lockHandVec->k = -1;
-        // }
-        // else if (otherLeftX + other->w <= leftX + offset)
-        // {
-        //     // 左
-        //     other->lockHandVec->k = 1;
-        // }
-
-        // 横向
-        // if (dir == 0)
-        // {
-        //     auto value = other->w / 2 + w / 2;
-        //     if ((other->x - value) < x)
-        //     {
-        //         other->x = (x + value);
-        //     }
-        //     other->lockHandVec->k = -1;
-        // }
-        // else if (dir == 1)
-        // {
-        //     auto value = other->w / 2 + w / 2;
-        //     if ((other->x + value) > x)
-        //     {
-        //         other->x = (x - value);
-        //     }
-
-        //     other->lockHandVec->k = 1;
-        // }
-        // else if (dir == 3)
-        // {
-        //     if (other->y <= y - h + 3)
-        //     {
-        //         other->otherLine = y - h;
-        //     }
-        // }
     }
     virtual void onCollisionOut(Role *other, bool from) override
     {

@@ -314,3 +314,11 @@ void Role::setupCollisionCallbacks()
         onCollisionOut(static_cast<Role *>(static_cast<QuadTreeRect *>(other)->val), from);
     };
 }
+
+void Role::jump()
+{
+    if (idle && ground && lockHandVec->p == 0)
+    {
+        upSpeed = getProp(PropType::JUMP_SPEED);
+    }
+}

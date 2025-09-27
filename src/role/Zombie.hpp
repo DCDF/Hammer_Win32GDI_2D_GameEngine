@@ -6,28 +6,36 @@ class Zombie : public LaoA
 public:
     double think = 0.5;
     int dir = 0;
-
+    int speed = 0;
+    bool revertSpeed = false;
     Zombie(int resId, int x, int y, int imgW, int imgH, int row, int col, int w, int h) : LaoA(resId, x, y, imgW, imgH, row, col, w, h)
     {
+        speed = rand() % 50 + 10;
     }
     void tick(double deltaTime) override
     {
         think -= deltaTime;
         if (think <= 0)
         {
+            revertSpeed = false;
             dir = rand() % 2;
             int addMax = 700;
             double addThink = rand() % addMax / addMax;
             think = 0.3 + addThink / 1000.0;
             if (preVec->k == 0)
             {
-                if (rand() % 3 == 0)
+                int rd = rand() % 10;
+                if (rd == 0)
                 {
-                    upSpeed = 250;
+                    jump();
+                }
+                else if (rd > 8)
+                {
+                    revertSpeed = true;
                 }
             }
         }
-        handVec->k = dir == 0 ? -30 : 30;
+        handVec->k = revertSpeed? speed : -speed;
         Role::tick(deltaTime);
     }
 };

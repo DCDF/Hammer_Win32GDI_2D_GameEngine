@@ -82,6 +82,7 @@ public:
     virtual void tick(double deltaTime);
     virtual void render();
     
+    virtual void jump();
     // animation helpers
     virtual void addAnimation(const std::string &name, int start, int num, bool loop, std::vector<int> hitIndex);
     virtual void play(const std::string &name, bool force = true);

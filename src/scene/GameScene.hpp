@@ -27,7 +27,9 @@ protected:
     Role *role;
     int floorX = 0;
 
-    
+    double zombieTime = 0;
+    int max = 1000;
+
 public:
     void beforeEnter() override
     {
@@ -36,10 +38,6 @@ public:
         roleVec.emplace_back(std::make_unique<LaoA>(201, 100, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
 
-        for (int i = 0; i < 10; i++)
-        {
-            roleVec.emplace_back(std::make_unique<Zombie>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        }
         // roleVec.emplace_back(std::make_unique<Zombie>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
@@ -50,7 +48,7 @@ public:
 
         if (role->ground && Input::IsKeyDown(' '))
         {
-            role->upSpeed = role->getProp(PropType::JUMP_SPEED);
+            role->jump();
         }
     }
 
@@ -103,7 +101,16 @@ public:
         {
             role->handVec->k += 100;
         }
-    
+
+        zombieTime -= deltaTime;
+
+        if (zombieTime <= 0 && max > 0)
+        {
+            max--;
+            roleVec.emplace_back(std::make_unique<Zombie>(201, GAME_WIDTH + rand() % 100, GAME_LINE, 64, 64, 10, 8, 20, 32));
+            zombieTime = 0.5;
+        }
+
         for (auto &role : roleVec)
         {
 
