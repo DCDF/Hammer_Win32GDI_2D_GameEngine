@@ -34,7 +34,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
     bool running = true;
     std::wstring fpsText = L"0";
 
-    QuadTree::WORLD = std::make_unique<QuadTree>(QuadTreeRect(0, 0, WORLD_RIGHT, GAME_HEIGHT), 4);
+    QuadTree::WORLD = std::make_unique<QuadTree>(QuadTreeRect(-100, -100, WORLD_RIGHT * 1.5, GAME_HEIGHT * 1.5), 4);
 
     // 设置碰撞回调
 
@@ -76,7 +76,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         GDI::text(fpsText, 10, 10);
         GDI::flush(dt);
     }
-    //保证场景内对象清理在tree之前
+    // 保证场景内对象清理在tree之前
     Scene::change(nullptr);
     GDI::end();
     Input::Shutdown();

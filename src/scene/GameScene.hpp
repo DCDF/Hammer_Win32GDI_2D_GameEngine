@@ -28,7 +28,7 @@ protected:
     int floorX = 0;
 
     double zombieTime = 0;
-    int max = 1000;
+    int max = 0;
 
 public:
     void beforeEnter() override
@@ -49,6 +49,10 @@ public:
         if (role->ground && Input::IsKeyDown(' '))
         {
             role->jump();
+        }
+        else if (Input::IsKeyDown('R'))
+        {
+            max = 10;
         }
     }
 
@@ -75,7 +79,7 @@ public:
         //     auto each = QuadTree::WORLD->collisionCache[pairId].get();
         //     GDI::text(L"from " + std::to_wstring(each->dir), GAME_OFFSET_X + 120, count * 40);
         // }
-        // GDI::text(L"flag " + std::to_wstring(role->flag), 60, 60);
+        GDI::text(L"flag " + std::to_wstring(role->flag), 60, 60);
         for (auto &role : roleVec)
         {
             role->render();
@@ -107,7 +111,7 @@ public:
         if (zombieTime <= 0 && max > 0)
         {
             max--;
-            roleVec.emplace_back(std::make_unique<Zombie>(201, GAME_WIDTH + rand() % 100, GAME_LINE, 64, 64, 10, 8, 20, 32));
+            roleVec.emplace_back(std::make_unique<Zombie>(201, role->x, GAME_LINE, 64, 64, 10, 8, 20, 32));
             zombieTime = 0.5;
         }
 
