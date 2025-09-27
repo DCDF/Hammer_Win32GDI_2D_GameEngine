@@ -32,33 +32,65 @@ public:
     {
         if (from)
             return;
+        float leftX = x - w / 2;
+        float otherLeftX = other->x - other->w / 2;
+        float offset = 3;
 
-        if (dir == 0)
+        if (std::abs(other->y - y) >= other->h / 2 + h / 2 - offset)
         {
-            auto value = other->w / 2 + w / 2;
-            if ((other->x - value) < x)
+            // 上/下
+            if (other->y < y)
             {
-                other->x = (x + value);
-            }
-            other->lockHandVec->k = -1;
-        }
-        else if (dir == 1)
-        {
-            auto value = other->w / 2 + w / 2;
-            if ((other->x + value) > x)
-            {
-                other->x = (x - value);
-            }
-
-            other->lockHandVec->k = 1;
-        }
-        else if (dir == 3)
-        {
-            if (other->y <= y - h + 3)
-            {
+                // 上
                 other->otherLine = y - h;
             }
+            else
+            {
+                // 下
+            }
         }
+        else
+        {
+            other->lockHandVec->k = otherLeftX > leftX ? -1 : 1;
+        }
+        // if (otherLeftX >= leftX)
+        // {
+        //     // 右
+        //     other->lockHandVec->k = -1;
+        // }
+        // else if (otherLeftX + other->w <= leftX + offset)
+        // {
+        //     // 左
+        //     other->lockHandVec->k = 1;
+        // }
+
+        // 横向
+        // if (dir == 0)
+        // {
+        //     auto value = other->w / 2 + w / 2;
+        //     if ((other->x - value) < x)
+        //     {
+        //         other->x = (x + value);
+        //     }
+        //     other->lockHandVec->k = -1;
+        // }
+        // else if (dir == 1)
+        // {
+        //     auto value = other->w / 2 + w / 2;
+        //     if ((other->x + value) > x)
+        //     {
+        //         other->x = (x - value);
+        //     }
+
+        //     other->lockHandVec->k = 1;
+        // }
+        // else if (dir == 3)
+        // {
+        //     if (other->y <= y - h + 3)
+        //     {
+        //         other->otherLine = y - h;
+        //     }
+        // }
     }
     virtual void onCollisionOut(Role *other, bool from) override
     {

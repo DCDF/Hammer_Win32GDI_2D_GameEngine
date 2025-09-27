@@ -85,14 +85,15 @@ void QuadTree::tick(double dt)
             if (preCollision.find(other) == preCollision.end())
             {
                 //  新碰撞
+                // int dir = val->getDir(other);
+                int dir = 0;
                 auto newInfo = std::make_unique<QuadTreeCollisionInfo>();
                 auto info = newInfo.get();
                 collisionCache[pairId] = std::move(newInfo);
                 info->from = val;
                 info->to = other;
-                info->dir = val->getDir(other);
+                info->dir = dir;
 
-                int dir = val->getDir(other);
                 val->onCollisionCallBack(other, dir, true);
                 other->onCollisionCallBack(val, dir, false);
 

@@ -7,13 +7,24 @@
     "expandedProjectPaths": [
     ],
     "fileStates": {
-        "640_336_16_16.tmx": {
-            "scale": 1.4205468749999999,
+        "5倍地图.tmx": {
+            "scale": 0.33,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 319.947203431777,
-                "y": 168.24506407083544
+                "x": 1301.5151515151513,
+                "y": 593.939393939394
             }
+        },
+        "640_336_16_16.tmx": {
+            "scale": 3,
+            "selectedLayer": 5,
+            "viewCenter": {
+                "x": 95.83333333333334,
+                "y": 232
+            }
+        },
+        "农作物_.tsx": {
+            "dynamicWrapping": false
         },
         "地图1.tmx": {
             "scale": 0.75,
@@ -38,11 +49,11 @@
             "dynamicWrapping": false
         },
         "战斗女仆地图.tmx": {
-            "scale": 0.5,
-            "selectedLayer": 1,
+            "scale": 1,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 205,
-                "y": 236
+                "x": 1640.5,
+                "y": 215
             }
         },
         "村舍.tsx": {
@@ -80,21 +91,26 @@
         "背景图.tsx": {
             "dynamicWrapping": true
         },
+        "资源_其他图块.tsx": {
+            "dynamicWrapping": false
+        },
         "资源_地面.tsx": {
             "dynamicWrapping": false
         }
     },
-    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/农作物",
-    "map.fixedSize": false,
+    "last.imagePath": "C:/hammer++/Hammer_Win32GDI_2D_GameEngine/tile/src/资源包",
+    "map.fixedSize": true,
     "map.height": 21,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
-    "map.width": 120,
+    "map.width": 60,
     "openFiles": [
     ],
     "project": "场景.tiled-project",
     "recentFiles": [
+        "640_336_16_16.tmx",
+        "5倍地图.tmx",
         "皇宫.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",

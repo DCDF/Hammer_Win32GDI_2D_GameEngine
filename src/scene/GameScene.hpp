@@ -10,6 +10,7 @@
 #include "../KV.h"
 #include "../Input.h"
 #include "../role/LaoA.hpp"
+#include "../role/Zombie.hpp"
 #include "../role/PlatForm.hpp"
 
 extern int GAME_WIDTH;
@@ -26,18 +27,20 @@ protected:
     Role *role;
     int floorX = 0;
 
+    
 public:
     void beforeEnter() override
     {
         Audios::bg(301);
 
-        roleVec.emplace_back(std::make_unique<LaoA>(201, WORLD_RIGHT - 200, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        roleVec.emplace_back(std::make_unique<LaoA>(201, 100, GAME_LINE, 64, 64, 10, 8, 20, 32));
         role = roleVec.back().get();
 
-        // for (int i = 0; i < 50; i++)
-        // {
-        //     roleVec.emplace_back(std::make_unique<LaoA>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
-        // }
+        for (int i = 0; i < 10; i++)
+        {
+            roleVec.emplace_back(std::make_unique<Zombie>(201, rand() % WORLD_RIGHT, GAME_LINE, 64, 64, 10, 8, 20, 32));
+        }
+        // roleVec.emplace_back(std::make_unique<Zombie>(201, 64, GAME_LINE, 64, 64, 10, 8, 20, 32));
 
         Camera::setTarget(role);
     }
@@ -100,16 +103,10 @@ public:
         {
             role->handVec->k += 100;
         }
-        else if (Input::IsKeyDown('F'))
-        {
-            GAME_LINE = 50;
-        }
-        else if (Input::IsKeyDown('G'))
-        {
-            GAME_LINE = 100;
-        }
+    
         for (auto &role : roleVec)
         {
+
             role->tick(deltaTime);
         }
     }
